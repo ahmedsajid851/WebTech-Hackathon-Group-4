@@ -54,164 +54,33 @@ if($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["change_password"])){
     <meta charset="UTF-8">
     <title>Dashboard - <?php echo SITE_NAME; ?></title>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        
-        body {
-            font-family: Arial, sans-serif;
-            background: #f5f5f5;
-        }
-        
-        .header {
-            background: #2c3e50;
-            color: white;
-            padding: 15px 30px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        
-        .logo {
-            font-size: 20px;
-            font-weight: bold;
-        }
-        
-        .nav a {
-            color: white;
-            text-decoration: none;
-            margin-left: 20px;
-            padding: 5px 10px;
-            cursor: pointer;
-        }
-        
-        .nav a:hover {
-            background: #34495e;
-        }
-        
-        .container {
-            max-width: 800px;
-            margin: 30px auto;
-            padding: 0 20px;
-        }
-        
-        .welcome-box {
-            background: white;
-            padding: 25px;
-            border: 1px solid #ddd;
-            margin-bottom: 25px;
-            border-radius: 5px;
-        }
-        
-        .welcome-box h2 {
-            margin-bottom: 10px;
-            color: #333;
-        }
-        
-        .welcome-box p {
-            margin: 5px 0;
-            color: #666;
-        }
-        
-        .card {
-            background: white;
-            border: 1px solid #ddd;
-            margin-bottom: 25px;
-            border-radius: 5px;
-        }
-        
-        .card-header {
-            padding: 15px 20px;
-            border-bottom: 1px solid #ddd;
-            background: #f9f9f9;
-        }
-        
-        .card-header h3 {
-            color: #333;
-        }
-        
-        .card-body {
-            padding: 20px;
-        }
-        
-        .info-row {
-            padding: 10px 0;
-            border-bottom: 1px solid #eee;
-        }
-        
-        .info-row:last-child {
-            border-bottom: none;
-        }
-        
-        .info-label {
-            font-weight: bold;
-            width: 130px;
-            display: inline-block;
-        }
-        
-        .product-placeholder {
-            text-align: center;
-            padding: 40px;
-            color: #999;
-        }
-        
-        .hidden {
-            display: none;
-        }
-        
-        .password-form {
-            margin-top: 20px;
-            padding-top: 20px;
-            border-top: 1px solid #eee;
-        }
-        
-        .password-form h4 {
-            margin-bottom: 15px;
-            color: #333;
-        }
-        
-        .password-form input {
-            width: 100%;
-            max-width: 300px;
-            padding: 8px;
-            margin: 5px 0 15px 0;
-            border: 1px solid #ddd;
-        }
-        
-        .password-form button {
-            background: #2c3e50;
-            color: white;
-            padding: 8px 20px;
-            border: none;
-            cursor: pointer;
-        }
-        
-        .password-form button:hover {
-            background: #34495e;
-        }
-        
-        .success-msg {
-            background: #d4edda;
-            color: #155724;
-            padding: 10px;
-            margin-bottom: 15px;
-            border: 1px solid #c3e6cb;
-            border-radius: 3px;
-        }
-        
-        .error-msg {
-            background: #f8d7da;
-            color: #721c24;
-            padding: 10px;
-            margin-bottom: 15px;
-            border: 1px solid #f5c6cb;
-            border-radius: 3px;
-        }
+        *{margin:0;padding:0;box-sizing:border-box;}
+        body{font-family:Arial;background:#f0f0f0;}
+        .header{background:#2c3e50;color:white;padding:15px 20px;display:flex;justify-content:space-between;}
+        .nav a{color:white;text-decoration:none;margin-left:15px;padding:5px 10px;cursor:pointer;}
+        .nav a:hover{background:#34495e;}
+        .container{max-width:800px;margin:20px auto;padding:0 20px;}
+        .welcome-box{background:white;padding:20px;border:1px solid #ddd;margin-bottom:20px;}
+        .card{background:white;border:1px solid #ddd;margin-bottom:20px;}
+        .card-header{padding:12px 15px;border-bottom:1px solid #ddd;background:#f9f9f9;}
+        .card-body{padding:15px;}
+        .info-row{padding:10px 0;border-bottom:1px solid #eee;display:flex;}
+        .info-label{font-weight:bold;width:130px;display:inline-block;}
+        .info-value{flex:1;}
+        .hidden{display:none;}
+        .password-form{margin-top:15px;padding-top:15px;border-top:1px solid #eee;}
+        .password-form h4{margin-bottom:15px;}
+        .form-field{margin-bottom:15px;}
+        .form-field label{display:block;font-weight:bold;margin-bottom:5px;}
+        .password-form input{width:100%;max-width:300px;padding:8px;border:1px solid #ddd;}
+        .password-form button{background:#2c3e50;color:white;padding:8px 20px;border:none;cursor:pointer;margin-top:5px;}
+        .password-form button:hover{background:#34495e;}
+        .success-msg{background:#d4edda;color:#155724;padding:10px;margin-bottom:15px;border:1px solid #c3e6cb;}
+        .error-msg{background:#f8d7da;color:#721c24;padding:10px;margin-bottom:15px;border:1px solid #f5c6cb;}
+        .product-placeholder{text-align:center;padding:40px;color:#999;}
     </style>
     <script>
-        // Function to logout across all tabs
+        // Cross-tab logout function
         function logoutUser() {
             localStorage.setItem('logout', 'true');
             localStorage.removeItem('logout');
@@ -235,7 +104,7 @@ if($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["change_password"])){
             document.getElementById('productCard').classList.remove('hidden');
         }
         
-        // Check session every 5 seconds (backup method)
+        // Check session every 3 seconds (backup method)
         setInterval(function() {
             fetch('../api/auth.php?action=checkSession')
                 .then(response => response.json())
@@ -245,7 +114,7 @@ if($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["change_password"])){
                     }
                 })
                 .catch(() => {});
-        }, 5000);
+        }, 3000);
     </script>
 </head>
 <body>
@@ -253,8 +122,8 @@ if($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["change_password"])){
         <div class="logo"><?php echo SITE_NAME; ?></div>
         <div class="nav">
             <a onclick="showHome()">Home</a>
-            <a href="#">My Orders</a>
-            <a onclick="showProfile()">My Profile</a>
+            <a href="#">Orders</a>
+            <a onclick="showProfile()">Profile</a>
             <a href="javascript:void(0)" onclick="logoutUser()">Logout</a>
         </div>
     </div>
@@ -263,10 +132,10 @@ if($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["change_password"])){
         <div class="welcome-box">
             <h2>Welcome, <?php echo htmlspecialchars($username); ?>!</h2>
             <p>Email: <?php echo htmlspecialchars($userEmail); ?></p>
-            <p>✓ You are logged in as a <strong><?php echo ucfirst($userRole); ?></strong></p>
+            <p>✓ Logged in as <strong><?php echo ucfirst($userRole); ?></strong></p>
         </div>
         
-        <!-- Account Information Card (Hidden by default) -->
+        <!-- Account Information Card -->
         <div id="profileCard" class="card hidden">
             <div class="card-header">
                 <h3>Account Information</h3>
@@ -281,44 +150,43 @@ if($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["change_password"])){
                 
                 <div class="info-row">
                     <span class="info-label">Name:</span>
-                    <span><?php echo htmlspecialchars($username); ?></span>
+                    <span class="info-value"><?php echo htmlspecialchars($username); ?></span>
                 </div>
                 <div class="info-row">
                     <span class="info-label">Email:</span>
-                    <span><?php echo htmlspecialchars($userEmail); ?></span>
+                    <span class="info-value"><?php echo htmlspecialchars($userEmail); ?></span>
                 </div>
                 <div class="info-row">
-                    <span class="info-label">Phone Number:</span>
-                    <span><?php echo htmlspecialchars($userPhone); ?></span>
+                    <span class="info-label">Phone:</span>
+                    <span class="info-value"><?php echo htmlspecialchars($userPhone); ?></span>
                 </div>
                 <div class="info-row">
                     <span class="info-label">Role:</span>
-                    <span><?php echo ucfirst($userRole); ?></span>
+                    <span class="info-value"><?php echo ucfirst($userRole); ?></span>
                 </div>
                 
-                <!-- Change Password Section -->
                 <div class="password-form">
                     <h4>Change Password</h4>
                     <form method="post">
-                        <div>
-                            <label>Current Password:</label><br>
+                        <div class="form-field">
+                            <label>Current Password</label>
                             <input type="password" name="old_password" required>
                         </div>
-                        <div>
-                            <label>New Password:</label><br>
+                        <div class="form-field">
+                            <label>New Password</label>
                             <input type="password" name="new_password" required>
                         </div>
-                        <div>
-                            <label>Confirm New Password:</label><br>
+                        <div class="form-field">
+                            <label>Confirm Password</label>
                             <input type="password" name="confirm_password" required>
                         </div>
-                        <button type="submit" name="change_password">Update Password</button>
+                        <button type="submit" name="change_password">Update</button>
                     </form>
                 </div>
             </div>
         </div>
         
-        <!-- Product Catalogue Card (Visible by default) -->
+        <!-- Product Catalogue Card -->
         <div id="productCard" class="card">
             <div class="card-header">
                 <h3>Product Catalogue</h3>

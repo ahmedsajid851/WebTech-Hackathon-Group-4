@@ -60,73 +60,130 @@ try {
     <style>
         *{margin:0;padding:0;box-sizing:border-box;}
         body{font-family:Arial;background:#f0f0f0;}
-        
-        .top-nav{background:#1a1a1a;color:white;padding:15px 20px;position:sticky;top:0;display:flex;justify-content:space-between;align-items:center;}
-        .top-nav h2{font-size:18px;}
-        .user-info{display:flex;gap:15px;align-items:center;}
-        .logout-btn{background:#d9534f;color:white;padding:5px 12px;text-decoration:none;border-radius:3px;}
-        .logout-btn:hover{background:#c9302c;}
-        
-        .sidebar{width:200px;background:#2c2c2c;position:sticky;top:52px;height:calc(100vh - 52px);}
-        .sidebar a{color:#ddd;display:block;padding:12px 20px;text-decoration:none;border-bottom:1px solid #3a3a3a;}
-        .sidebar a:hover{background:#3a3a3a;}
-        .sidebar a.active{background:#007bff;color:white;}
-        
-        .main-container{display:flex;}
-        .content{flex:1;padding:20px;}
-        
-        .stats{display:flex;gap:15px;margin-bottom:20px;flex-wrap:wrap;}
-        .stat-box{background:white;padding:15px;border:1px solid #ddd;min-width:140px;text-align:center;}
-        .stat-box h3{font-size:13px;color:#666;margin-bottom:8px;}
-        .stat-box .number{font-size:28px;font-weight:bold;}
-        
+        .header{background:#2c3e50;color:white;padding:15px 20px;display:flex;justify-content:space-between;}
+        .nav a{color:white;text-decoration:none;margin-left:15px;padding:5px 10px;}
+        .nav a:hover{background:#34495e;}
+        .container{max-width:1200px;margin:20px auto;padding:0 20px;}
         .welcome-box{background:white;padding:20px;border:1px solid #ddd;margin-bottom:20px;}
-        .welcome-box h2{margin-bottom:10px;}
+        .stats{display:flex;gap:15px;margin-bottom:20px;flex-wrap:wrap;}
+        .stat{background:white;padding:15px;border:1px solid #ddd;flex:1;text-align:center;min-width:120px;}
+        .stat .number{font-size:28px;font-weight:bold;color:#2c3e50;}
+        .card{background:white;border:1px solid #ddd;margin-bottom:20px;}
+        .card-header{padding:12px 15px;border-bottom:1px solid #ddd;background:#f9f9f9;}
+        .card-body{padding:15px;}
+        table{width:100%;border-collapse:collapse;}
+        th,td{padding:8px;text-align:left;border-bottom:1px solid #eee;}
+        th{background:#f5f5f5;}
+        .badge{display:inline-block;padding:3px 8px;font-size:11px;border-radius:3px;}
+        .badge-admin{background:#e74c3c;color:white;}
+        .badge-customer{background:#27ae60;color:white;}
+        .quick-links{display:flex;gap:10px;flex-wrap:wrap;}
+        .quick-link{background:#ecf0f1;padding:6px 12px;text-decoration:none;color:#333;}
+        .quick-link:hover{background:#3498db;color:white;}
     </style>
+    <script>
+        // Function to logout across all tabs
+        function logoutUser() {
+            localStorage.setItem('logout', 'true');
+            localStorage.removeItem('logout');
+            window.location.href = '../../controllers/AuthController.php?action=logout';
+        }
+        
+        // Listen for logout events from other tabs
+        window.addEventListener('storage', function(event) {
+            if (event.key === 'logout' && event.newValue === 'true') {
+                window.location.href = '../../views/auth/login.php';
+            }
+        });
+        
+        // Check session every 3 seconds (backup method)
+        setInterval(function() {
+            fetch('../../api/auth.php?action=checkSession')
+                .then(response => response.json())
+                .then(data => {
+                    if (!data.loggedIn) {
+                        window.location.href = '../../views/auth/login.php';
+                    }
+                })
+                .catch(() => {});
+        }, 3000);
+    </script>
 </head>
 <body>
-    <div class="top-nav">
-        <h2>Admin Panel</h2>
-        <div class="user-info">
-            <span><?php echo htmlspecialchars(getCurrentUserName()); ?></span>
-            <span><?php echo $_SESSION['role'] ?? 'admin'; ?></span>
-            <a href="../../views/auth/logout.php" class="logout-btn">Logout</a>
+    <div class="header">
+        <div class="logo"><?php echo SITE_NAME; ?> - Admin</div>
+        <div class="nav">
+            <a href="#">Dashboard</a>
+            <a href="#">Orders</a>
+            <a href="javascript:void(0)" onclick="logoutUser()">Logout</a>
         </div>
     </div>
     
-    <div class="main-container">
-        <div class="sidebar">
-            <a href="dashboard.php" class="active">Dashboard</a>
-            <a href="categories.php">Categories</a>
-            <a href="products.php">Products</a>
-            <a href="orders.php">Orders</a>
+    <div class="container">
+        <div class="welcome-box">
+            <h2>Welcome, <?php echo htmlspecialchars($adminName); ?>!</h2>
+            <p>Email: <?php echo htmlspecialchars($adminEmail); ?></p>
+            <p>✓ Logged in as Administrator</p>
         </div>
         
-        <div class="content">
-            <div class="welcome-box">
-                <h2>Welcome, <?php echo htmlspecialchars(getCurrentUserName()); ?>!</h2>
-                <p>You are logged in as an administrator.</p>
+        <div class="stats">
+            <div class="stat">
+                <div class="number"><?php echo $totalUsers; ?></div>
+                <div class="label">Users</div>
             </div>
-            
-            <div class="stats">
-                <div class="stat-box">
-                    <h3>Total Products</h3>
-                    <div class="number"><?php echo $totalProducts; ?></div>
+            <div class="stat">
+                <div class="number">0</div>
+                <div class="label">Orders</div>
+            </div>
+            <div class="stat">
+                <div class="number">0</div>
+                <div class="label">Products</div>
+            </div>
+            <div class="stat">
+                <div class="number">0</div>
+                <div class="label">Categories</div>
+            </div>
+        </div>
+        
+        <div class="card">
+            <div class="card-header">
+                <h3>Quick Actions</h3>
+            </div>
+            <div class="card-body">
+                <div class="quick-links">
+                    <a href="#" class="quick-link">Orders</a>
+                    <a href="#" class="quick-link">Categories</a>
+                    <a href="#" class="quick-link">Products</a>
+                    <a href="#" class="quick-link">Users</a>
+                    <a href="#" class="quick-link">Reviews</a>
                 </div>
-                <div class="stat-box">
-                    <h3>Total Categories</h3>
-                    <div class="number"><?php echo $totalCategories; ?></div>
-                </div>
-                <div class="stat-box">
-                    <h3>Low Stock Items</h3>
-                    <div class="number" style="color: <?php echo $lowStockItems > 0 ? '#d9534f' : '#5cb85c'; ?>">
-                        <?php echo $lowStockItems; ?>
-                    </div>
-                </div>
-                <div class="stat-box">
-                    <h3>Pending Orders</h3>
-                    <div class="number"><?php echo $pendingOrders; ?></div>
-                </div>
+            </div>
+        </div>
+        
+        <div class="card">
+            <div class="card-header">
+                <h3>Users List</h3>
+            </div>
+            <div class="card-body">
+                <?php if(count($recentUsers) > 0): ?>
+                    <table>
+                        <thead>
+                            <tr><th>ID</th><th>Name</th><th>Email</th><th>Role</th></tr>
+                        </thead>
+                        <tbody>
+                            <?php foreach($recentUsers as $row): ?>
+                            <tr>
+                                <td><?php echo $row['id']; ?></dt>
+                                <td><?php echo htmlspecialchars($row['name']); ?></dt>
+                                <td><?php echo htmlspecialchars($row['email']); ?></dt>
+                                <td><span class="badge <?php echo $row['role'] === 'admin' ? 'badge-admin' : 'badge-customer'; ?>"><?php echo ucfirst($row['role']); ?></span></dt>
+                            </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                <?php else: ?>
+                    <p>No users found.</p>
+                <?php endif; ?>
             </div>
         </div>
     </div>
