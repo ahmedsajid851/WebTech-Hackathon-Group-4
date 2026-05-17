@@ -1,126 +1,161 @@
 <?php
-// views/admin/categories.php
+// models/Category.php
 
-require_once __DIR__ . '/../../config/db.php';
-require_once __DIR__ . '/../../models/Category.php';
-
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
-}
-
-if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'admin') {
-    die("Access Denied");
-}
-
-$categoryModel = new Category($pdo);
-$categories = $categoryModel->getCategoryTree();
-
-if (isset($_GET['delete'])) {
-    $id = $_GET['delete'];
+class Category {
+    private $conn;
     
-    if ($categoryModel->hasChildren($id)) {
-        $error = "Cannot delete category. It has child categories.";
-    } elseif ($categoryModel->hasProducts($id)) {
-        $error = "Cannot delete category. It has products.";
-    } else {
-        if ($categoryModel->delete($id)) {
-            header("Location: categories.php?msg=deleted");
-            exit();
-        } else {
-            $error = "Failed to delete.";
+    public function __construct($connection){
+        $this->conn = $connection;
+    }
+    
+    // Get all categories
+    public function getAll(){
+        $sql = "SELECT * FROM categories ORDER BY parent_id, name";
+        $result = $this->conn->query($sql);
+        $categories = [];
+        
+        while($row = $result->fetch_assoc()){
+            $categories[] = $row;
         }
+        return $categories;
+    }
+    
+    // Get parent categories (for dropdown)
+    public function getParentCategories($excludeId = null){
+        if($excludeId){
+            $sql = "SELECT id, name FROM categories WHERE parent_id IS NULL AND id != ? ORDER BY name";
+            $stmt = $this->conn->prepare($sql);
+            $stmt->bind_param("i", $excludeId);
+            $stmt->execute();
+            $result = $stmt->get_result();
+        } else {
+            $sql = "SELECT id, name FROM categories WHERE parent_id IS NULL ORDER BY name";
+            $result = $this->conn->query($sql);
+        }
+        
+        $categories = [];
+        while($row = $result->fetch_assoc()){
+            $categories[] = $row;
+        }
+        return $categories;
+    }
+    
+    // Get category by ID
+    public function getById($id){
+        $sql = "SELECT * FROM categories WHERE id = ?";
+        $stmt = $this->conn->prepare($sql);
+        $stmt->bind_param("i", $id);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        return $result->fetch_assoc();
+    }
+    
+    // Create new category
+    public function create($name, $parent_id = null){
+        if($parent_id && $parent_id != ''){
+            $sql = "INSERT INTO categories (name, parent_id) VALUES (?, ?)";
+            $stmt = $this->conn->prepare($sql);
+            $stmt->bind_param("si", $name, $parent_id);
+        } else {
+            $sql = "INSERT INTO categories (name) VALUES (?)";
+            $stmt = $this->conn->prepare($sql);
+            $stmt->bind_param("s", $name);
+        }
+        
+        return $stmt->execute();
+    }
+    
+    // Update category
+    public function update($id, $name, $parent_id = null){
+        if($parent_id && $parent_id != ''){
+            $sql = "UPDATE categories SET name = ?, parent_id = ? WHERE id = ?";
+            $stmt = $this->conn->prepare($sql);
+            $stmt->bind_param("sii", $name, $parent_id, $id);
+        } else {
+            $sql = "UPDATE categories SET name = ?, parent_id = NULL WHERE id = ?";
+            $stmt = $this->conn->prepare($sql);
+            $stmt->bind_param("si", $name, $id);
+        }
+        return $stmt->execute();
+    }
+    
+    // Delete category
+    public function delete($id){
+        // Check if category has children
+        $checkSql = "SELECT id FROM categories WHERE parent_id = ? LIMIT 1";
+        $checkStmt = $this->conn->prepare($checkSql);
+        $checkStmt->bind_param("i", $id);
+        $checkStmt->execute();
+        $checkResult = $checkStmt->get_result();
+        
+        if($checkResult->num_rows > 0){
+            return false; // Has child categories, cannot delete
+        }
+        
+        // Check if category has products
+        $checkProductSql = "SELECT id FROM products WHERE category_id = ? LIMIT 1";
+        $checkProductStmt = $this->conn->prepare($checkProductSql);
+        $checkProductStmt->bind_param("i", $id);
+        $checkProductStmt->execute();
+        $checkProductResult = $checkProductStmt->get_result();
+        
+        if($checkProductResult->num_rows > 0){
+            return false; // Has products, cannot delete
+        }
+        
+        // Delete category
+        $sql = "DELETE FROM categories WHERE id = ?";
+        $stmt = $this->conn->prepare($sql);
+        $stmt->bind_param("i", $id);
+        return $stmt->execute();
+    }
+    
+    // Get child categories
+    public function getChildren($parent_id){
+        $sql = "SELECT * FROM categories WHERE parent_id = ? ORDER BY name";
+        $stmt = $this->conn->prepare($sql);
+        $stmt->bind_param("i", $parent_id);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        
+        $categories = [];
+        while($row = $result->fetch_assoc()){
+            $categories[] = $row;
+        }
+        return $categories;
+    }
+    
+    // Get category tree (nested)
+    public function getCategoryTree(){
+        $sql = "SELECT * FROM categories ORDER BY parent_id, name";
+        $result = $this->conn->query($sql);
+        
+        $categories = [];
+        while($row = $result->fetch_assoc()){
+            $categories[$row['id']] = $row;
+        }
+        
+        $tree = [];
+        foreach($categories as $id => $category){
+            if($category['parent_id'] === null){
+                $tree[] = $category;
+            } else {
+                $categories[$category['parent_id']]['children'][] = $category;
+            }
+        }
+        
+        return $tree;
+    }
+    
+    // Get category name by ID
+    public function getCategoryName($id){
+        $sql = "SELECT name FROM categories WHERE id = ?";
+        $stmt = $this->conn->prepare($sql);
+        $stmt->bind_param("i", $id);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $row = $result->fetch_assoc();
+        return $row ? $row['name'] : null;
     }
 }
-
-$message = '';
-if (isset($_GET['msg'])) {
-    if ($_GET['msg'] == 'created') $message = "Category created.";
-    elseif ($_GET['msg'] == 'updated') $message = "Category updated.";
-    elseif ($_GET['msg'] == 'deleted') $message = "Category deleted.";
-}
 ?>
-
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Categories</title>
-    <style>
-        *{margin:0;padding:0;box-sizing:border-box;}
-        body{font-family:Arial;background:#f0f0f0;}
-        .top-nav{background:#1a1a1a;color:white;padding:15px 20px;position:sticky;top:0;display:flex;justify-content:space-between;}
-        .logout-btn{background:#d9534f;color:white;padding:5px 12px;text-decoration:none;border-radius:3px;}
-        .sidebar{width:200px;background:#2c2c2c;position:sticky;top:52px;height:calc(100vh - 52px);}
-        .sidebar a{color:#ddd;display:block;padding:12px 20px;text-decoration:none;border-bottom:1px solid #3a3a3a;}
-        .sidebar a:hover{background:#3a3a3a;}
-        .sidebar a.active{background:#007bff;color:white;}
-        .main-container{display:flex;}
-        .content{flex:1;padding:20px;}
-        .header{display:flex;justify-content:space-between;margin-bottom:20px;}
-        .btn{display:inline-block;padding:8px 15px;background:#007bff;color:white;text-decoration:none;border-radius:3px;}
-        .btn-danger{background:#d9534f;}
-        .btn-edit{background:#5bc0de;}
-        .message{background:#d9edf7;padding:10px;margin-bottom:20px;}
-        .error{background:#f2dede;padding:10px;margin-bottom:20px;color:#a94442;}
-        table{width:100%;background:white;border-collapse:collapse;}
-        th,td{padding:10px;text-align:left;border-bottom:1px solid #ddd;}
-        th{background:#f5f5f5;}
-        .actions{display:flex;gap:8px;}
-    </style>
-</head>
-<body>
-    <div class="top-nav">
-        <h2>Admin Panel</h2>
-        <div>
-            <span><?php echo $_SESSION['name'] ?? 'Guest'; ?></span>
-            <a href="../../views/auth/logout.php" class="logout-btn">Logout</a>
-        </div>
-    </div>
-    
-    <div class="main-container">
-        <div class="sidebar">
-            <a href="dashboard.php">Dashboard</a>
-            <a href="categories.php" class="active">Categories</a>
-            <a href="products.php">Products</a>
-            <a href="orders.php">Orders</a>
-        </div>
-        
-        <div class="content">
-            <div class="header">
-                <h2>Categories</h2>
-                <a href="category_create.php" class="btn">Add Category</a>
-            </div>
-            
-            <?php if($message): ?><div class="message"><?php echo $message; ?></div><?php endif; ?>
-            <?php if(isset($error)): ?><div class="error"><?php echo $error; ?></div><?php endif; ?>
-            
-            <table>
-                <thead><tr><th>ID</th><th>Name</th><th>Parent</th><th>Actions</th></tr></thead>
-                <tbody>
-                    <?php if(empty($categories)): ?>
-                        <tr><td colspan="4">No categories</td></tr>
-                    <?php else: ?>
-                        <?php foreach($categories as $cat): ?>
-                            <tr>
-                                <td><?php echo $cat['id']; ?></td>
-                                <td><?php echo htmlspecialchars($cat['name']); ?></td>
-                                <td>
-                                    <?php 
-                                    if($cat['parent_id']){
-                                        $parent = $categoryModel->getById($cat['parent_id']);
-                                        echo $parent['name'];
-                                    } else { echo '-'; }
-                                    ?>
-                                </td>
-                                <td class="actions">
-                                    <a href="category_edit.php?id=<?php echo $cat['id']; ?>" class="btn btn-edit" style="padding:4px 10px;">Edit</a>
-                                    <a href="?delete=<?php echo $cat['id']; ?>" class="btn btn-danger" style="padding:4px 10px;" onclick="return confirm('Delete?')">Delete</a>
-                                </td>
-                            </tr>
-                        <?php endforeach; ?>
-                    <?php endif; ?>
-                </tbody>
-            </table>
-        </div>
-    </div>
-</body>
-</html>

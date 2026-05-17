@@ -12,7 +12,11 @@ if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'admin') {
     die("Access Denied");
 }
 
-$categoryModel = new Category($pdo);
+// FIXED: Create database connection using your Database class
+$database = new Database();
+$connection = $database->openConnection();
+
+$categoryModel = new Category($connection);
 $id = $_GET['id'] ?? null;
 
 if(!$id){
@@ -26,7 +30,7 @@ if(!$category){
     exit();
 }
 
-$parentCategories = $categoryModel->getParentCategories($id);
+$parentCategories = $categoryModel->getParentCategories();
 $error = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -103,7 +107,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         <select name="parent_id">
                             <option value="">None (Top Level)</option>
                             <?php foreach($parentCategories as $parent): ?>
-                                <option value="<?php echo $parent['id']; ?>" <?php echo $category['parent_id'] == $parent['id'] ? 'selected' : ''; ?>>
+                                <option value="<?php echo $parent['id']; ?>" <?php echo ($category['parent_id'] == $parent['id']) ? 'selected' : ''; ?>>
                                     <?php echo htmlspecialchars($parent['name']); ?>
                                 </option>
                             <?php endforeach; ?>
