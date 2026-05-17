@@ -2,19 +2,12 @@
 // models/Category.php
 
 class Category {
-    /**
-     * @var mysqli $connection
-     */
     private $connection;
     
     public function __construct($connection) {
         $this->connection = $connection;
     }
     
-    /**
-     * Get all categories as tree
-     * @return array
-     */
     public function getCategoryTree() {
         $sql = "SELECT * FROM categories ORDER BY parent_id, id";
         $result = $this->connection->query($sql);
@@ -28,10 +21,6 @@ class Category {
         return $categories;
     }
     
-    /**
-     * Get categories with level indentation for dropdown
-     * @return array
-     */
     public function getCategoryTreeWithLevel() {
         $sql = "SELECT * FROM categories ORDER BY parent_id, id";
         $result = $this->connection->query($sql);
@@ -54,7 +43,6 @@ class Category {
             
             $this->addLevel($categories);
             
-            // Flatten array
             $flat = [];
             $this->flattenCategories($categories, $flat);
             return $flat;
@@ -62,11 +50,6 @@ class Category {
         return [];
     }
     
-    /**
-     * Add level to categories
-     * @param array &$categories
-     * @param int $level
-     */
     private function addLevel(&$categories, $level = 0) {
         foreach($categories as &$cat) {
             $cat['level'] = $level;
@@ -76,11 +59,6 @@ class Category {
         }
     }
     
-    /**
-     * Flatten categories array
-     * @param array $categories
-     * @param array &$result
-     */
     private function flattenCategories($categories, &$result) {
         foreach($categories as $cat) {
             $result[] = $cat;
@@ -90,10 +68,6 @@ class Category {
         }
     }
     
-    /**
-     * Get all categories for parent dropdown
-     * @return array
-     */
     public function getParentCategories() {
         $sql = "SELECT * FROM categories ORDER BY name";
         $result = $this->connection->query($sql);
@@ -107,11 +81,26 @@ class Category {
         return $categories;
     }
     
-    /**
-     * Get category by ID
-     * @param int $id
-     * @return array|null
-     */
+    public function getParentCategoriesExcluding($excludeId = null) {
+        if ($excludeId) {
+            $stmt = $this->connection->prepare("SELECT * FROM categories WHERE id != ? ORDER BY name");
+            $stmt->bind_param("i", $excludeId);
+            $stmt->execute();
+            $result = $stmt->get_result();
+        } else {
+            $sql = "SELECT * FROM categories ORDER BY name";
+            $result = $this->connection->query($sql);
+        }
+        
+        $categories = [];
+        if ($result && $result->num_rows > 0) {
+            while($row = $result->fetch_assoc()) {
+                $categories[] = $row;
+            }
+        }
+        return $categories;
+    }
+    
     public function getById($id) {
         $stmt = $this->connection->prepare("SELECT * FROM categories WHERE id = ?");
         $stmt->bind_param("i", $id);
@@ -124,11 +113,6 @@ class Category {
         return null;
     }
     
-    /**
-     * Check if category has children
-     * @param int $id
-     * @return bool
-     */
     public function hasChildren($id) {
         $stmt = $this->connection->prepare("SELECT COUNT(*) as count FROM categories WHERE parent_id = ?");
         $stmt->bind_param("i", $id);
@@ -138,11 +122,6 @@ class Category {
         return $row['count'] > 0;
     }
     
-    /**
-     * Check if category has products
-     * @param int $id
-     * @return bool
-     */
     public function hasProducts($id) {
         $stmt = $this->connection->prepare("SELECT COUNT(*) as count FROM products WHERE category_id = ?");
         $stmt->bind_param("i", $id);
@@ -152,12 +131,6 @@ class Category {
         return $row['count'] > 0;
     }
     
-    /**
-     * Create new category
-     * @param string $name
-     * @param int|null $parentId
-     * @return bool
-     */
     public function create($name, $parentId = null) {
         if ($parentId && $parentId != '') {
             $stmt = $this->connection->prepare("INSERT INTO categories (name, parent_id) VALUES (?, ?)");
@@ -169,13 +142,6 @@ class Category {
         return $stmt->execute();
     }
     
-    /**
-     * Update category
-     * @param int $id
-     * @param string $name
-     * @param int|null $parentId
-     * @return bool
-     */
     public function update($id, $name, $parentId = null) {
         if ($parentId && $parentId != '') {
             $stmt = $this->connection->prepare("UPDATE categories SET name = ?, parent_id = ? WHERE id = ?");
@@ -187,15 +153,9 @@ class Category {
         return $stmt->execute();
     }
     
-    /**
-     * Delete category
-     * @param int $id
-     * @return bool
-     */
     public function delete($id) {
         $stmt = $this->connection->prepare("DELETE FROM categories WHERE id = ?");
         $stmt->bind_param("i", $id);
         return $stmt->execute();
     }
 }
-?>
