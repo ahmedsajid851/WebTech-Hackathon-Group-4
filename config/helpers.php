@@ -16,6 +16,29 @@ function redirect($url) {
     exit();
 }
 
+// Require admin access
+function require_admin() {
+    if (session_status() === PHP_SESSION_NONE) {
+        session_start();
+    }
+    
+    if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'admin') {
+        die("Access Denied. Admin privileges required.");
+    }
+}
+
+// Require login access
+function require_login() {
+    if (session_status() === PHP_SESSION_NONE) {
+        session_start();
+    }
+    
+    if (!isset($_SESSION['user_id']) || !isset($_SESSION['isLoggedIn']) || $_SESSION['isLoggedIn'] !== true) {
+        header("Location: ../views/auth/login.php");
+        exit();
+    }
+}
+
 // Redirect to login page using absolute URL
 function redirectToLogin() {
     $protocol = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https' : 'http';
