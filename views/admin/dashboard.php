@@ -19,33 +19,45 @@ function getCurrentUserRole() {
     return $_SESSION['role'] ?? 'guest';
 }
 
-try {
-    $stmt = $pdo->prepare("SELECT COUNT(*) as total FROM products");
-    $stmt->execute();
-    $totalProducts = $stmt->fetch(PDO::FETCH_ASSOC)['total'];
-    
-    $stmt = $pdo->prepare("SELECT COUNT(*) as total FROM categories");
-    $stmt->execute();
-    $totalCategories = $stmt->fetch(PDO::FETCH_ASSOC)['total'];
-    
-    $stmt = $pdo->prepare("SELECT COUNT(*) as total FROM products WHERE stock_qty <= 5");
-    $stmt->execute();
-    $lowStockItems = $stmt->fetch(PDO::FETCH_ASSOC)['total'];
-    
-    try {
-        $stmt = $pdo->prepare("SELECT COUNT(*) as total FROM orders WHERE status = 'Pending'");
-        $stmt->execute();
-        $pendingOrders = $stmt->fetch(PDO::FETCH_ASSOC)['total'];
-    } catch (PDOException $e) {
-        $pendingOrders = 0;
-    }
-    
-} catch (PDOException $e) {
-    $totalProducts = 0;
-    $totalCategories = 0;
-    $lowStockItems = 0;
-    $pendingOrders = 0;
+// Create database connection using your Database class
+$database = new Database();
+$conn = $database->openConnection();
+
+// Initialize variables
+$totalProducts = 0;
+$totalCategories = 0;
+$lowStockItems = 0;
+$pendingOrders = 0;
+
+// Get total products
+$result = $conn->query("SELECT COUNT(*) as total FROM products");
+if($result){
+    $row = $result->fetch_assoc();
+    $totalProducts = $row['total'];
 }
+
+// Get total categories
+$result = $conn->query("SELECT COUNT(*) as total FROM categories");
+if($result){
+    $row = $result->fetch_assoc();
+    $totalCategories = $row['total'];
+}
+
+// Get low stock items (stock_qty <= 5)
+$result = $conn->query("SELECT COUNT(*) as total FROM products WHERE stock_qty <= 5");
+if($result){
+    $row = $result->fetch_assoc();
+    $lowStockItems = $row['total'];
+}
+
+// Get pending orders
+$result = $conn->query("SELECT COUNT(*) as total FROM orders WHERE status = 'Pending'");
+if($result){
+    $row = $result->fetch_assoc();
+    $pendingOrders = $row['total'];
+}
+
+$database->closeConnection($conn);
 ?>
 
 <!DOCTYPE html>
