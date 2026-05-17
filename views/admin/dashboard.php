@@ -1,32 +1,53 @@
-<?php 
-require_once __DIR__ . '/../../config/config.php';
-require_once __DIR__ . '/../../config/helpers.php';
-require_once __DIR__ . '/../../models/User.php';
+<?php
+// views/admin/dashboard.php
 
-// Check if user is logged in and is admin
-if(!isLoggedIn()){
-    redirect("views/auth/login.php");
-    exit();
+require_once __DIR__ . '/../../config/db.php';
+
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
 }
 
-if(!isAdmin()){
-    redirect("views/dashboard.php");
-    exit();
+if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'admin') {
+    die("Access Denied");
 }
 
-$userModel = new User();
-$allUsers = $userModel->getAllUsers();
-$adminName = $_SESSION["user_name"] ?? "";
-$adminEmail = $_SESSION["user_email"] ?? "";
+$database = new DatabaseConnection();
+$connection = $database->openConnection();
 
-// Get users
-$recentUsers = [];
-$totalUsers = 0;
-if($allUsers && $allUsers->num_rows > 0){
-    $totalUsers = $allUsers->num_rows;
-    while($row = $allUsers->fetch_assoc()){
-        $recentUsers[] = $row;
+function getCurrentUserName() {
+    return $_SESSION['name'] ?? 'Guest';
+}
+
+try {
+    $stmt = $connection->prepare("SELECT COUNT(*) as total FROM products");
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $totalProducts = $result->fetch_assoc()['total'];
+    
+    $stmt = $connection->prepare("SELECT COUNT(*) as total FROM categories");
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $totalCategories = $result->fetch_assoc()['total'];
+    
+    $stmt = $connection->prepare("SELECT COUNT(*) as total FROM products WHERE stock_qty <= 5");
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $lowStockItems = $result->fetch_assoc()['total'];
+    
+    try {
+        $stmt = $connection->prepare("SELECT COUNT(*) as total FROM orders WHERE status = 'Pending'");
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $pendingOrders = $result->fetch_assoc()['total'];
+    } catch (Exception $e) {
+        $pendingOrders = 0;
     }
+    
+} catch (Exception $e) {
+    $totalProducts = 0;
+    $totalCategories = 0;
+    $lowStockItems = 0;
+    $pendingOrders = 0;
 }
 ?>
 
@@ -34,7 +55,8 @@ if($allUsers && $allUsers->num_rows > 0){
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Admin Dashboard - <?php echo SITE_NAME; ?></title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard</title>
     <style>
         *{margin:0;padding:0;box-sizing:border-box;}
         body{font-family:Arial;background:#f0f0f0;}
