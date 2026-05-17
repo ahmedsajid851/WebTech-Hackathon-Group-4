@@ -19,15 +19,45 @@ $allUsers = $userModel->getAllUsers();
 $adminName = $_SESSION["user_name"] ?? "";
 $adminEmail = $_SESSION["user_email"] ?? "";
 
-// Get users
-$recentUsers = [];
-$totalUsers = 0;
-if($allUsers && $allUsers->num_rows > 0){
-    $totalUsers = $allUsers->num_rows;
-    while($row = $allUsers->fetch_assoc()){
-        $recentUsers[] = $row;
-    }
+// Create database connection using your Database class
+$database = new Database();
+$conn = $database->openConnection();
+
+// Initialize variables
+$totalProducts = 0;
+$totalCategories = 0;
+$lowStockItems = 0;
+$pendingOrders = 0;
+
+// Get total products
+$result = $conn->query("SELECT COUNT(*) as total FROM products");
+if($result){
+    $row = $result->fetch_assoc();
+    $totalProducts = $row['total'];
 }
+
+// Get total categories
+$result = $conn->query("SELECT COUNT(*) as total FROM categories");
+if($result){
+    $row = $result->fetch_assoc();
+    $totalCategories = $row['total'];
+}
+
+// Get low stock items (stock_qty <= 5)
+$result = $conn->query("SELECT COUNT(*) as total FROM products WHERE stock_qty <= 5");
+if($result){
+    $row = $result->fetch_assoc();
+    $lowStockItems = $row['total'];
+}
+
+// Get pending orders
+$result = $conn->query("SELECT COUNT(*) as total FROM orders WHERE status = 'Pending'");
+if($result){
+    $row = $result->fetch_assoc();
+    $pendingOrders = $row['total'];
+}
+
+$database->closeConnection($conn);
 ?>
 
 <!DOCTYPE html>
