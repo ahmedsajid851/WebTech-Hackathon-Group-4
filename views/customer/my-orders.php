@@ -8,10 +8,11 @@ if(!isset($_SESSION['user_id'])){
     exit();
 }
 
-require_once '../../config/db.php';
-require_once '../../models/Order.php';
+require_once __DIR__ . '/../../config/db.php';
+require_once __DIR__ . '/../../models/Order.php';
 
-$database = new Database();
+// Fix: Use DatabaseConnection class instead of Database
+$database = new DatabaseConnection();
 $connection = $database->openConnection();
 $orderModel = new Order($connection);
 
@@ -25,15 +26,16 @@ $database->closeConnection($connection);
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>My Orders</title>
+    <title>My Orders - E-Commerce Store</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: Arial, sans-serif; background: #f4f4f4; padding: 20px; }
-        .container { max-width: 1000px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; }
+        body { font-family: Arial, sans-serif; background: #f0f0f0; }
+        .header { background: #2c3e50; color: white; padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; }
+        .logo { font-size: 20px; font-weight: bold; }
+        .nav a { color: white; text-decoration: none; margin-left: 20px; padding: 5px 10px; }
+        .nav a:hover { background: #34495e; }
+        .container { max-width: 1000px; margin: 30px auto; padding: 0 20px; }
         h1 { color: #333; margin-bottom: 20px; }
-        .nav { margin-bottom: 20px; padding: 10px; background: #333; border-radius: 5px; }
-        .nav a { color: white; text-decoration: none; margin-right: 15px; padding: 5px 10px; }
-        .nav a:hover { background: #555; border-radius: 3px; }
         .order-card { border: 1px solid #ddd; margin: 15px 0; padding: 15px; border-radius: 5px; background: white; }
         .order-header { background: #f5f5f5; padding: 10px; cursor: pointer; font-weight: bold; border-radius: 3px; }
         .order-header:hover { background: #e9ecef; }
@@ -151,13 +153,14 @@ $database->closeConnection($connection);
             formData.append("product_id", productId);
             formData.append("rating", rating.value);
             formData.append("review_text", reviewText);
+            formData.append("order_id", orderId);
             
             var xhttp = new XMLHttpRequest();
             xhttp.onreadystatechange = function(){
                 if(this.readyState == 4){
                     if(this.status == 200){
                         var response = JSON.parse(this.responseText);
-                        if(response.ok){
+                        if(response.success){
                             resultDiv.innerHTML = '<div class="success-msg">✅ Review submitted successfully! Thank you!</div>';
                             document.getElementById(`review_text_${productId}`).value = '';
                             var radios = document.querySelectorAll(`input[name="rating_${productId}"]`);
@@ -176,28 +179,32 @@ $database->closeConnection($connection);
     </script>
 </head>
 <body>
-    <div class="container">
-        <h1>📦 My Orders</h1>
+    <div class="header">
+        <div class="logo">E-Commerce Store</div>
         <div class="nav">
-            <a href="../dashboard.php">🏠 Home</a>
-            <a href="my-orders.php">📋 My Orders</a>
-            <a href="../profile.php">👤 Profile</a>
-            <a href="../../controllers/AuthController.php?action=logout">🚪 Logout</a>
+            <a href="../dashboard.php">Home</a>
+            <a href="my-orders.php">My Orders</a>
+            <a href="../profile.php">Profile</a>
+            <a href="../../controllers/AuthController.php?action=logout">Logout</a>
         </div>
+    </div>
+    
+    <div class="container">
+        <h1>My Orders</h1>
         
         <?php if(empty($orders)): ?>
             <div class="no-orders">
                 <p>You haven't placed any orders yet.</p>
-                <a href="../catalogue.php">🛒 Start Shopping</a>
+                <a href="../catalogue.php">Start Shopping</a>
             </div>
         <?php else: ?>
             <?php foreach($orders as $order): ?>
                 <div class="order-card">
                     <div class="order-header" onclick="toggleOrder(<?php echo $order['id']; ?>)">
-                        🧾 Order #<?php echo $order['id']; ?> - 
-                        📅 Date: <?php echo $order['created_at']; ?> - 
-                        💰 Total: $<?php echo number_format($order['total_amount'], 2); ?> - 
-                        📊 Status: <span class="badge 
+                        Order #<?php echo $order['id']; ?> - 
+                        Date: <?php echo date('M d, Y', strtotime($order['created_at'])); ?> - 
+                        Total: $<?php echo number_format($order['total_amount'], 2); ?> - 
+                        Status: <span class="badge 
                             <?php 
                                 if($order['status'] == 'Pending') echo 'badge-warning';
                                 elseif($order['status'] == 'Processing') echo 'badge-info';
@@ -209,7 +216,7 @@ $database->closeConnection($connection);
                         </span>
                     </div>
                     <div id="details-<?php echo $order['id']; ?>" class="order-details" style="display:none">
-                        ⏳ Loading order details...
+                        Loading order details...
                     </div>
                 </div>
             <?php endforeach; ?>

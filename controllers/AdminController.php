@@ -1,15 +1,16 @@
 <?php
-require_once '../config/helpers.php';
-require_once '../config/db.php';
-require_once '../models/Order.php';
+require_once __DIR__ . '/../config/helpers.php';
+require_once __DIR__ . '/../config/db.php';
+require_once __DIR__ . '/../models/Order.php';
 
 class AdminController {
     private $db;
     private $orderModel;
     
     public function __construct(){
-        $database = new Database();
-        $this->db = $database->getConnection();
+        // Fix: Use DatabaseConnection class instead of Database
+        $database = new DatabaseConnection();
+        $this->db = $database->openConnection();
         $this->orderModel = new Order($this->db);
     }
     
@@ -34,7 +35,7 @@ class AdminController {
             });
         }
         
-        include '../views/admin/orders.php';
+        include __DIR__ . '/../views/admin/orders.php';
     }
     
     public function updateOrderStatus($order_id, $status){

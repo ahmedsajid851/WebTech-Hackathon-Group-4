@@ -1,16 +1,17 @@
 <?php
 // controllers/OrderController.php
-require_once '../config/helpers.php';
-require_once '../config/db.php';
-require_once '../models/Order.php';
+require_once __DIR__ . '/../config/helpers.php';
+require_once __DIR__ . '/../config/db.php';
+require_once __DIR__ . '/../models/Order.php';
 
 class OrderController {
     private $db;
     private $orderModel;
     
     public function __construct(){
-        $database = new Database();
-        $this->db = $database->getConnection();
+        // Fix: Use DatabaseConnection class instead of Database
+        $database = new DatabaseConnection();
+        $this->db = $database->openConnection();
         $this->orderModel = new Order($this->db);
     }
     
@@ -20,7 +21,7 @@ class OrderController {
         $user_id = $_SESSION['user_id'];
         $orders = $this->orderModel->getUserOrders($user_id);
         
-        include '../views/customer/my-orders.php';
+        include __DIR__ . '/../views/customer/my-orders.php';
     }
     
     public function orderDetail($order_id){
@@ -36,7 +37,7 @@ class OrderController {
         
         $items = $this->orderModel->getOrderItems($order_id);
         
-        include '../views/customer/order-detail.php';
+        include __DIR__ . '/../views/customer/order-detail.php';
     }
 }
 
