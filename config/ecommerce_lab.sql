@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: May 13, 2026 at 05:02 PM
+-- Generation Time: May 17, 2026 at 07:09 AM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -30,8 +30,17 @@ SET time_zone = "+00:00";
 CREATE TABLE `categories` (
   `id` int(11) NOT NULL,
   `parent_id` int(11) DEFAULT NULL,
-  `name` varchar(100) DEFAULT NULL
+  `name` varchar(100) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `categories`
+--
+
+INSERT INTO `categories` (`id`, `parent_id`, `name`) VALUES
+(1, NULL, 'Electronics'),
+(2, NULL, 'Clothing'),
+(3, NULL, 'Books');
 
 -- --------------------------------------------------------
 
@@ -41,13 +50,21 @@ CREATE TABLE `categories` (
 
 CREATE TABLE `orders` (
   `id` int(11) NOT NULL,
-  `user_id` int(11) DEFAULT NULL,
-  `shipping_address` text DEFAULT NULL,
-  `payment_method` enum('Cash','Card') DEFAULT NULL,
-  `total_amount` decimal(10,2) DEFAULT NULL,
+  `user_id` int(11) NOT NULL,
+  `shipping_address` text NOT NULL,
+  `payment_method` enum('Cash','Card') NOT NULL,
+  `total_amount` decimal(10,2) NOT NULL,
   `status` enum('Pending','Processing','Shipped','Delivered','Cancelled') DEFAULT 'Pending',
   `created_at` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `orders`
+--
+
+INSERT INTO `orders` (`id`, `user_id`, `shipping_address`, `payment_method`, `total_amount`, `status`, `created_at`) VALUES
+(1, 1, '123 Test Street', 'Cash', 1029.98, 'Delivered', '2026-05-17 04:07:51'),
+(2, 2, '456 Test Avenue', 'Card', 59.98, 'Delivered', '2026-05-17 04:07:51');
 
 -- --------------------------------------------------------
 
@@ -57,11 +74,20 @@ CREATE TABLE `orders` (
 
 CREATE TABLE `order_items` (
   `id` int(11) NOT NULL,
-  `order_id` int(11) DEFAULT NULL,
-  `product_id` int(11) DEFAULT NULL,
-  `quantity` int(11) DEFAULT NULL,
-  `unit_price` decimal(10,2) DEFAULT NULL
+  `order_id` int(11) NOT NULL,
+  `product_id` int(11) NOT NULL,
+  `quantity` int(11) NOT NULL,
+  `unit_price` decimal(10,2) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `order_items`
+--
+
+INSERT INTO `order_items` (`id`, `order_id`, `product_id`, `quantity`, `unit_price`) VALUES
+(4, 1, 5, 1, 999.99),
+(5, 1, 6, 1, 29.99),
+(6, 2, 6, 2, 29.99);
 
 -- --------------------------------------------------------
 
@@ -72,14 +98,22 @@ CREATE TABLE `order_items` (
 CREATE TABLE `products` (
   `id` int(11) NOT NULL,
   `category_id` int(11) DEFAULT NULL,
-  `name` varchar(150) DEFAULT NULL,
+  `name` varchar(150) NOT NULL,
   `description` text DEFAULT NULL,
-  `price` decimal(10,2) DEFAULT NULL,
-  `stock_qty` int(11) DEFAULT NULL,
+  `price` decimal(10,2) NOT NULL,
+  `stock_qty` int(11) NOT NULL DEFAULT 0,
   `primary_image_path` varchar(255) DEFAULT NULL,
   `is_available` tinyint(1) DEFAULT 1,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `products`
+--
+
+INSERT INTO `products` (`id`, `category_id`, `name`, `description`, `price`, `stock_qty`, `primary_image_path`, `is_available`, `created_at`) VALUES
+(5, 1, 'Test Laptop', 'High performance laptop', 999.99, 10, 'laptop.jpg', 1, '2026-05-17 04:07:24'),
+(6, 1, 'Wireless Mouse', 'Ergonomic mouse', 29.99, 25, 'mouse.jpg', 1, '2026-05-17 04:07:24');
 
 -- --------------------------------------------------------
 
@@ -89,12 +123,20 @@ CREATE TABLE `products` (
 
 CREATE TABLE `reviews` (
   `id` int(11) NOT NULL,
-  `product_id` int(11) DEFAULT NULL,
-  `user_id` int(11) DEFAULT NULL,
-  `rating` tinyint(4) DEFAULT NULL,
+  `product_id` int(11) NOT NULL,
+  `user_id` int(11) NOT NULL,
+  `rating` tinyint(4) NOT NULL CHECK (`rating` >= 1 and `rating` <= 5),
   `review_text` text DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `reviews`
+--
+
+INSERT INTO `reviews` (`id`, `product_id`, `user_id`, `rating`, `review_text`, `created_at`) VALUES
+(1, 5, 1, 5, 'Great', '2026-05-17 04:14:15'),
+(2, 6, 2, 5, 'great', '2026-05-17 04:19:30');
 
 -- --------------------------------------------------------
 
@@ -104,15 +146,27 @@ CREATE TABLE `reviews` (
 
 CREATE TABLE `users` (
   `id` int(11) NOT NULL,
-  `name` varchar(100) DEFAULT NULL,
-  `email` varchar(100) DEFAULT NULL,
-  `password_hash` varchar(255) DEFAULT NULL,
+  `name` varchar(100) NOT NULL,
+  `email` varchar(100) NOT NULL,
+  `password_hash` varchar(255) NOT NULL,
   `phone` varchar(20) DEFAULT NULL,
   `role` enum('customer','admin') DEFAULT 'customer',
   `shipping_addresses` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL CHECK (json_valid(`shipping_addresses`)),
   `remember_token` varchar(255) DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `users`
+--
+
+INSERT INTO `users` (`id`, `name`, `email`, `password_hash`, `phone`, `role`, `shipping_addresses`, `remember_token`, `created_at`) VALUES
+(1, 'John Doe', 'john@example.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', '1112223333', 'customer', NULL, NULL, '2026-05-16 19:03:00'),
+(2, 'Jane Smith', 'jane@example.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', '4445556666', 'customer', NULL, NULL, '2026-05-16 19:03:00'),
+(3, 'Bob Wilson', 'bob@example.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', '7778889999', 'customer', NULL, NULL, '2026-05-16 19:03:00'),
+(4, 'Istiak Ahmed Saklain', 'istiakahmed@gmail.com', '$2y$10$E7GkkAjW/INYpjrqqsnnke8sPbuY8nvZBcx1nZP/6iXnVwq9D9e1.', '01732899674', 'customer', NULL, NULL, '2026-05-17 03:50:57'),
+(5, 'Istiak Ahmed Saklain', 'istiakahmedsci@gmail.com', '$2y$10$GT8NQz9TiwrFKpyKg4ehFOuZ6zY9w7U3g1vxxu00OpT8hZx5buZbu', '01732899674', 'customer', NULL, NULL, '2026-05-17 03:54:38'),
+(6, 'Admin User', 'admin@example.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', '1234567890', 'admin', NULL, NULL, '2026-05-17 05:06:09');
 
 --
 -- Indexes for dumped tables
@@ -152,8 +206,8 @@ ALTER TABLE `products`
 --
 ALTER TABLE `reviews`
   ADD PRIMARY KEY (`id`),
-  ADD KEY `product_id` (`product_id`),
-  ADD KEY `user_id` (`user_id`);
+  ADD UNIQUE KEY `unique_user_product_review` (`user_id`,`product_id`),
+  ADD KEY `product_id` (`product_id`);
 
 --
 -- Indexes for table `users`
@@ -170,37 +224,37 @@ ALTER TABLE `users`
 -- AUTO_INCREMENT for table `categories`
 --
 ALTER TABLE `categories`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
 
 --
 -- AUTO_INCREMENT for table `orders`
 --
 ALTER TABLE `orders`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
 
 --
 -- AUTO_INCREMENT for table `order_items`
 --
 ALTER TABLE `order_items`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
 
 --
 -- AUTO_INCREMENT for table `products`
 --
 ALTER TABLE `products`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
 
 --
 -- AUTO_INCREMENT for table `reviews`
 --
 ALTER TABLE `reviews`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
 
 --
 -- AUTO_INCREMENT for table `users`
 --
 ALTER TABLE `users`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
 
 --
 -- Constraints for dumped tables

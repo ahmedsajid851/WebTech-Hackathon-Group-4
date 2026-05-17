@@ -1,7 +1,9 @@
 <?php 
 
 
-session_start();
+if(session_status() == PHP_SESSION_NONE) {
+    session_start();
+}
 $cartCount = 0;
 if (isset($_SESSION["cart"])) {
     foreach($_SESSION["cart"] as $qty) {
@@ -134,8 +136,8 @@ if (isset($_SESSION["cart"])) {
                 <?php if(isset($_SESSION["name"])): ?>
                     <span>Welcome, <?php echo htmlspecialchars($_SESSION["name"]); ?></span>
                     <?php endif; ?>
-                    <a href="../controller/CartController.php">🛒 Cart <span id="cart-count"><?php echo $cartCount; ?></span></a>
-                    <a href="../view/login.php">Login</a>
+                    <a href="../controllers/CartController.php">🛒 Cart <span id="cart-count"><?php echo $cartCount; ?></span></a>
+                    <a href="../views/customer/login.php">Login</a>
                 
             </div>
         </div>
@@ -169,7 +171,7 @@ if (isset($_SESSION["cart"])) {
                         <img src="<?php echo htmlspecialchars($product['primary_image_path']); ?>" alt="<?php echo htmlspecialchars($product['name']); ?>">
                         <h3><?php echo htmlspecialchars($product['name']); ?></h3>
                         <div class="price">$<?php echo number_format($product['price'], 2); ?></div>
-                        <a href="../controller/ProductController.php?action=view&id=<?php echo $product['id']; ?>">View Details</a>
+                        <a href="../controllers/ProductController.php?action=view&id=<?php echo $product['id']; ?>">View Details</a>
                         <button class="btn-cart" onclick="addToCart(<?php echo $product['id']; ?>)">Add to Cart</button>
                     </div>
                 <?php endwhile; ?>
@@ -207,7 +209,7 @@ if (isset($_SESSION["cart"])) {
                     
 
                     var detailsLink = document.createElement("a");
-                    detailsLink.href = "../controller/ProductController.php?action=view&id=" + product.id;
+                    detailsLink.href = "../controllers/ProductController.php?action=view&id=" + product.id;
                     detailsLink.textContent = "View Details";
                     
 
@@ -229,7 +231,7 @@ if (isset($_SESSION["cart"])) {
 
             function searchProducts(keyword) {
                 var xhr = new XMLHttpRequest();
-                xhr.open("GET", "../controller/ProductController.php?action=search&q=" + encodeURIComponent(keyword), true);
+                xhr.open("GET", "../controllers/ProductController.php?action=search&q=" + encodeURIComponent(keyword), true);
                 xhr.onreadystatechange = function() {
                     if (xhr.status === 200 && xhr.readyState === 4) {
                         try{
@@ -247,13 +249,13 @@ if (isset($_SESSION["cart"])) {
             function filterByCategory(categoryId) {
                 if (categoryId == 0) {
                     //server reload korbe...
-                    window.location.href = "../controller/ProductController.php";
+                    window.location.href = "../controllers/ProductController.php";
                     return;
                   
                 }
                 
                 var xhr = new XMLHttpRequest();
-                xhr.open("GET", "../controller/ProductController.php?action=filter&category_id=" + categoryId, true);
+                xhr.open("GET", "../controllers/ProductController.php?action=filter&category_id=" + categoryId, true);
                 xhr.onreadystatechange = function() {
                     if (xhr.readyState === 4 && xhr.status === 200) {
                         try{
@@ -272,7 +274,7 @@ if (isset($_SESSION["cart"])) {
 
             function addToCart(productId) {
                 var xhr = new XMLHttpRequest();
-                xhr.open("POST", "../controller/CartController.php?action=add", true);
+                xhr.open("POST", "../controllers/CartController.php?action=add", true);
                 xhr.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
 
                 xhr.onreadystatechange = function () {

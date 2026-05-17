@@ -89,8 +89,8 @@ if (isset($_SESSION["cart"])) {
         <?php if (isset($_SESSION["name"])): ?>
         <span>Welcome, <?php echo htmlspecialchars($_SESSION["name"]); ?>!</span>
         <?php endif; ?>
-        <a href="../controller/ProductController.php">Home</a>
-        <a href="../controller/CartController.php">🛒 Cart<span id= "cart-count"><?php echo $cartCount > 0 ? " ($cartCount)" : ""; ?></span></a>
+        <a href="../controllers/ProductController.php">Home</a>
+        <a href="../controllers/CartController.php">🛒 Cart<span id= "cart-count"><?php echo $cartCount > 0 ? " ($cartCount)" : ""; ?></span></a>
     </div>
 </div>
 
@@ -132,74 +132,65 @@ if (isset($_SESSION["cart"])) {
                 <td></td>
             </tr>
     </table>
-    <a href="../controller/CheckoutController.php" class="btn-checkout">Proceed to Checkout</a>
+    <a href="http://localhost/final/controllers/CheckoutController.php" class="btn-checkout">Proceed to Checkout</a>
     <?php else: ?>
         <div class="empty">Your cart is empty. <a href="../controller/ProductController.php">Continue shopping</a>.</div>
     <?php endif; ?>
 
     <script>
-        function updateCart(productId, direction) {
-            var xhr = new XMLHttpRequest();
-            xhr.open("POST", "../controller/CartController.php?action=update", true);
-            xhr.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
-            xhr.onreadystatechange = function() {
-
+         function updateCart(productId, direction) {
+        var xhr = new XMLHttpRequest();
+        xhr.open("POST", "http://localhost/final/controllers/CartController.php?action=update", true);
+        xhr.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
+        xhr.onreadystatechange = function() {
             if(xhr.readyState === 4 && xhr.status === 200) {
                 try {
-                    
                     var response = JSON.parse(xhr.responseText);
                     if(response.success) {
-                        document.getElementById("qty-" + productId).textContent = response.newQty;
-                        document.getElementById("line-" + productId).textContent = "$" + response.lineTotal.toFixed(2);
-                        document.getElementById("grand-total").textContent = "$" + response.grandTotal.toFixed(2);
+                        if(response.newQty <= 0) {
+                            var row = document.getElementById("row-" + productId);
+                            if(row) row.remove();
+                        } else {
+                            document.getElementById("qty-" + productId).textContent = response.newQty;
+                            document.getElementById("line-" + productId).textContent = "$" + parseFloat(response.lineTotal).toFixed(2);
+                        }
+                        document.getElementById("grand-total").textContent = "$" + parseFloat(response.grandTotal).toFixed(2);
                         document.getElementById("cart-count").textContent = response.cartCount > 0 ? " (" + response.cartCount + ")" : "";
-
-                             if(response.newQty <= 0) {
-                                   var row = document.getElementById("row-" + productId);
-                                    if(row) row.remove();
-                                 }
-
-                    }
-                    else {
+                    } else {
                         alert(response.message || "Could not update cart.");
                     }
-                }
-                catch (e) {
-                        console.log("Invalid JSON form update :", e);
+                } catch(e) {
+                    console.log("Invalid JSON from update:", e);
                 }
             }
         };
-
         xhr.send("product_id=" + encodeURIComponent(productId) + "&direction=" + encodeURIComponent(direction));
-        }
+    }
 
-        function removeFromCart(productId) {
-            var xhr = new XMLHttpRequest();
-            xhr.open("POST", "../controller/CartController.php?action=remove", true);
-            xhr.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
-            xhr.onreadystatechange = function() {
-                if(xhr.readyState === 4 && xhr.status === 200) {
-                    try {
-                        var response = JSON.parse(xhr.responseText);
-                        if(response.success) {
-                            var row = document.getElementById("row-" + productId);
-                            if(row) {
-                                row.remove();
-                            }
-                            document.getElementById("grand-total").textContent = "$" + response.grandTotal.toFixed(2);
-                            document.getElementById("cart-count").textContent = response.cartCount > 0 ? " (" + response.cartCount + ")" : "";
-                        } 
-                        
-                        else {
-                            alert(response.message || "Could not remove item from cart.");
-                        }
-                    } catch (e) {
-                        console.log("Invalid JSON from remove:", e);
+    function removeFromCart(productId) {
+        var xhr = new XMLHttpRequest();
+        xhr.open("POST", "http://localhost/final/controllers/CartController.php?action=remove", true);
+        xhr.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
+        xhr.onreadystatechange = function() {
+            if(xhr.readyState === 4 && xhr.status === 200) {
+                try {
+                    var response = JSON.parse(xhr.responseText);
+                    if(response.success) {
+                        var row = document.getElementById("row-" + productId);
+                        if(row) row.remove();
+                        document.getElementById("grand-total").textContent = "$" + parseFloat(response.grandTotal).toFixed(2);
+                        document.getElementById("cart-count").textContent = response.cartCount > 0 ? " (" + response.cartCount + ")" : "";
+                    } else {
+                        alert(response.message || "Could not remove item from cart.");
                     }
+                } catch(e) {
+                    console.log("Invalid JSON from remove:", e);
                 }
-            };
-            xhr.send("product_id=" + encodeURIComponent(productId));
-        }
+            }
+        };
+        xhr.send("product_id=" + encodeURIComponent(productId));
+    }
+        
         </script>
 
 

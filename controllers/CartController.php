@@ -2,7 +2,7 @@
 
 session_start();
 include_once "../config/DatabaseConnection.php";
-include_once  "../model/ProductModel.php";
+include_once  "../models/ProductModel.php";
 
 
 //initialize 
@@ -27,10 +27,60 @@ if ($action !== "") {
     header('Content-Type: application/json');
 }
 
+if($action === "add") {
+    $product_id = (int)($_POST["product_id"] ?? 0);
+
+    if($product_id <= 0) {
+        echo json_encode(["success" => false, "message" => "Invalid product ID"]);
+        exit();
+    }
+    $result = $productModel->getProductById($connection, $product_id);
+
+    if($result->num_rows == 0) {
+        echo json_encode(["success" => false, "message" => "Product not found"]);
+        exit();
+    }
+
+    $product = $result->fetch_assoc();
+
+    if((int)$product["is_available"] !== 1) {
+        echo json_encode(["success" => false, "message" => "Product is not available"]);
+        exit();
+    }
+
+    $availableStock = (int)$product["stock_qty"];
+    $currentQty = $_SESSION["cart"][$product_id] ?? 0;
+    $newQty = $currentQty + 1;
+
+    if($newQty > $availableStock) {
+        $newQty = $availableStock;
+    }
+
+    $_SESSION["cart"][$product_id] = $newQty;
+
+    $cartCount = 0;
+    foreach($_SESSION["cart"] as $qty) {
+        $cartCount += $qty;
+    }
+
+    echo json_encode([
+        "success" => true,
+        "message" => "Product added to cart",
+        "product_id" => $product_id,
+        "product_name" => $product["name"],
+        "product_price" => $product["price"],
+        "product_primary_image_path" => $product["primary_image_path"],
+        "cartCount" => $cartCount
+    ]);
+    exit();
+    }
+
+
 
 if($action === "update") {
-    $product_id = $_POST["product_id"] ?? 0;
-    $direction = $_POST["direction"] ?? "";
+    $product_id = (int)($_POST["product_id"] ?? 0);
+    $direction = (int)($_POST["direction"] ?? 0);
+    
 
     if($product_id <= 0) {
         echo json_encode(["success" => false, "message" => "Invalid direction"]);
@@ -157,54 +207,12 @@ if ($action === "") {
     }
 
     // pass $cartItems and $grandTotal to view
-    include "../view/cart.php";
+    include "../views/customer/cart.php";
     exit();
 }
 
 
-if($action == "add") {
-    $product_id = $_POST["product_id"] ?? 0;
-    $product_id = (int)$product_id;
 
-    if($product_id <= 0) {
-        echo json_encode(["success" => false, "message" => "Invalid product ID"]);
-        exit();
-    }
-
-
-
-    $result = $productModel->getProductById($connection, $product_id);
-
-    if($result->num_rows == 0) {
-        echo json_encode(["success" => false, "message" => "Product not found"]);
-        exit();
-    }
-
-    $product = $result->fetch_assoc();
-    //accessable or not
-    if((int)$product["is_available"] !== 1) {
-        echo json_encode(["success" => false, "message" => "Product is not available"]);
-        exit();
-    }
-    $availableStock = (int)$product["stock_qty"];
-
-    $currentQty = $_SESSION["cart"][$product_id] ?? 0;
-    $newQty = $currentQty + 1;
-
-    if($newQty > $availableStock) {
-        $newQty = $availableStock;
-    }
-
-    $_SESSION["cart"][$product_id] = $newQty;
-    $totalCount = 0;
-    foreach($_SESSION["cart"] as $qty) {
-        $totalCount += $qty;
-    }
-
-    echo json_encode(["success" => true, "message" => "Product added to cart", "cartCount" => $totalCount]);
-    exit(); 
-    
-}
 
 
 

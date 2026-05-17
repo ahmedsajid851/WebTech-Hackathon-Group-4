@@ -102,8 +102,8 @@ if (isset($_SESSION["cart"])){
             <?php if (isset($_SESSION["name"])): ?>
                 <span>Welcome, <?php echo htmlspecialchars($_SESSION["name"]); ?>!</span>
                 <?php endif; ?>
-                <a href="../controller/ProductController.php">Home</a>
-                <a href="../controller/CartController.php">🛒 Cart <span id="cart-count"><?php echo $cartCount > 0 ? "($cartCount)" : ""; ?></span></a>
+                <a href="../controllers/ProductController.php">Home</a>
+                <a href="../controllers/CartController.php">🛒 Cart <span id="cart-count"><?php echo $cartCount > 0 ? "($cartCount)" : ""; ?></span></a>
 
             
         </div>
@@ -144,7 +144,7 @@ if (isset($_SESSION["cart"])){
 
      
 
-        <form method = "post" action="../controller/CheckoutController.php">
+        <form method = "post" action="../controllers/CheckoutController.php">
             <input type="hidden" name="action" value="place_order">
             <label>Shipping Address</label>
                 <?php if(!empty($savedAddresses)): ?>
@@ -164,10 +164,10 @@ if (isset($_SESSION["cart"])){
                                 <textarea name="shipping_address" placeholder="Enter your shipping address..." rows="3"></textarea>
                                 <?php endif; ?>
 
-                                //payment 
+                               
 
                                 <label>Payment Method</label>
-                                <div class ="radio-group">
+                                <div class="radio-group">
                                     <input type="radio" name="payment_method" value="Cash" id="cash" checked>
                                     <label for="cash">Cash on Delivery</label>
 
