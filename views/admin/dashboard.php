@@ -1,40 +1,72 @@
-<?php 
-require_once __DIR__ . '/../../config/config.php';
-require_once __DIR__ . '/../../config/helpers.php';
-require_once __DIR__ . '/../../models/User.php';
+<?php
+// views/admin/dashboard.php
 
-// Check if user is logged in and is admin
-if(!isLoggedIn()){
-    redirect("views/auth/login.php");
+if(session_status() == PHP_SESSION_NONE) {
+    session_start();
+}
+
+if(!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin'){
+    header("Location: ../auth/login.php");
     exit();
 }
 
-if(!isAdmin()){
-    redirect("views/dashboard.php");
-    exit();
+// ========== FIXED: Use Database class instead of DatabaseConnection ==========
+require_once __DIR__ . '/../../config/db.php';
+
+function getCurrentUserName() {
+    return $_SESSION['name'] ?? 'Guest';
 }
 
-$userModel = new User();
-$allUsers = $userModel->getAllUsers();
-$adminName = $_SESSION["user_name"] ?? "";
-$adminEmail = $_SESSION["user_email"] ?? "";
-
-// Get users
-$recentUsers = [];
-$totalUsers = 0;
-if($allUsers && $allUsers->num_rows > 0){
-    $totalUsers = $allUsers->num_rows;
-    while($row = $allUsers->fetch_assoc()){
-        $recentUsers[] = $row;
-    }
+function getCurrentUserRole() {
+    return $_SESSION['role'] ?? 'guest';
 }
+
+$database = new Database();
+$conn = $database->openConnection();
+
+// Initialize variables
+$totalProducts = 0;
+$totalCategories = 0;
+$lowStockItems = 0;
+$pendingOrders = 0;
+
+// Get total products
+$result = $conn->query("SELECT COUNT(*) as total FROM products");
+if($result){
+    $row = $result->fetch_assoc();
+    $totalProducts = $row['total'];
+}
+
+// Get total categories
+$result = $conn->query("SELECT COUNT(*) as total FROM categories");
+if($result){
+    $row = $result->fetch_assoc();
+    $totalCategories = $row['total'];
+}
+
+// Get low stock items (stock_qty <= 5)
+$result = $conn->query("SELECT COUNT(*) as total FROM products WHERE stock_qty <= 5");
+if($result){
+    $row = $result->fetch_assoc();
+    $lowStockItems = $row['total'];
+}
+
+// Get pending orders
+$result = $conn->query("SELECT COUNT(*) as total FROM orders WHERE status = 'Pending'");
+if($result){
+    $row = $result->fetch_assoc();
+    $pendingOrders = $row['total'];
+}
+
+$database->closeConnection($conn);
 ?>
 
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Admin Dashboard - <?php echo SITE_NAME; ?></title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard</title>
     <style>
         * {
             margin: 0;
@@ -44,283 +76,182 @@ if($allUsers && $allUsers->num_rows > 0){
         
         body {
             font-family: Arial, sans-serif;
-            background: #f5f5f5;
+            background: #f0f0f0;
         }
         
-        .header {
-            background: #2c3e50;
+        .top-nav {
+            background: #1a1a1a;
             color: white;
-            padding: 15px 30px;
+            padding: 15px 25px;
+            position: sticky;
+            top: 0;
+            z-index: 100;
             display: flex;
             justify-content: space-between;
             align-items: center;
+            border-bottom: 1px solid #333;
         }
         
-        .logo {
-            font-size: 20px;
-            font-weight: bold;
-        }
-        
-        .nav a {
-            color: white;
-            text-decoration: none;
-            margin-left: 20px;
-            padding: 5px 10px;
-            cursor: pointer;
-        }
-        
-        .nav a:hover {
-            background: #34495e;
-        }
-        
-        .container {
-            max-width: 1200px;
-            margin: 30px auto;
-            padding: 0 20px;
-        }
-        
-        .welcome-box {
-            background: white;
-            padding: 25px;
-            border: 1px solid #ddd;
-            margin-bottom: 25px;
-            border-radius: 5px;
-        }
-        
-        .welcome-box h2 {
-            margin-bottom: 10px;
-            color: #333;
-        }
-        
-        .welcome-box p {
-            margin: 5px 0;
-            color: #666;
-        }
-        
-        .card {
-            background: white;
-            border: 1px solid #ddd;
-            margin-bottom: 25px;
-            border-radius: 5px;
-        }
-        
-        .card-header {
-            padding: 15px 20px;
-            border-bottom: 1px solid #ddd;
-            background: #f9f9f9;
-        }
-        
-        .card-header h3 {
-            color: #333;
-        }
-        
-        .card-body {
-            padding: 20px;
-        }
-        
-        .stats {
-            display: flex;
-            gap: 20px;
-            margin-bottom: 30px;
-            flex-wrap: wrap;
-        }
-        
-        .stat {
-            background: white;
-            padding: 20px;
-            border: 1px solid #ddd;
-            flex: 1;
-            min-width: 150px;
-            text-align: center;
-            border-radius: 5px;
-        }
-        
-        .stat .number {
-            font-size: 32px;
-            font-weight: bold;
-            color: #2c3e50;
-        }
-        
-        .stat .label {
-            color: #666;
-            margin-top: 5px;
-        }
-        
-        table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-        
-        th, td {
-            padding: 10px;
-            text-align: left;
-            border-bottom: 1px solid #eee;
-        }
-        
-        th {
-            background: #f5f5f5;
-            font-weight: bold;
-        }
-        
-        .badge {
-            display: inline-block;
-            padding: 3px 8px;
-            font-size: 12px;
-            border-radius: 3px;
-        }
-        
-        .badge-admin {
-            background: #e74c3c;
+        .top-nav h2 {
+            font-size: 18px;
+            font-weight: normal;
             color: white;
         }
         
-        .badge-customer {
-            background: #27ae60;
-            color: white;
-        }
-        
-        .quick-links {
+        .user-info {
             display: flex;
             gap: 15px;
-            flex-wrap: wrap;
+            align-items: center;
         }
         
-        .quick-link {
-            background: #ecf0f1;
-            padding: 8px 15px;
-            text-decoration: none;
-            color: #333;
+        .user-name {
+            font-size: 14px;
+            color: white;
+        }
+        
+        .user-role {
+            background: #333;
+            padding: 3px 8px;
             border-radius: 3px;
-        }
-        
-        .quick-link:hover {
-            background: #3498db;
+            font-size: 12px;
             color: white;
         }
         
         .logout-btn {
-            background: #e74c3c;
-            padding: 5px 15px;
+            background: #d9534f;
+            color: white;
+            padding: 5px 12px;
+            text-decoration: none;
             border-radius: 3px;
+            font-size: 13px;
         }
         
         .logout-btn:hover {
-            background: #c0392b;
+            background: #c9302c;
+        }
+        
+        .main-container {
+            display: flex;
+        }
+        
+        .sidebar {
+            width: 200px;
+            background: #2c2c2c;
+            position: sticky;
+            top: 52px;
+            height: calc(100vh - 52px);
+            overflow-y: auto;
+        }
+        
+        .sidebar a {
+            color: #ddd;
+            text-decoration: none;
+            display: block;
+            padding: 12px 20px;
+            border-bottom: 1px solid #3a3a3a;
+            font-size: 14px;
+        }
+        
+        .sidebar a:hover {
+            background: #3a3a3a;
+            color: white;
+        }
+        
+        .sidebar a.active {
+            background: #007bff;
+            color: white;
+        }
+        
+        .content {
+            flex: 1;
+            padding: 20px;
+        }
+        
+        .page-title {
+            margin-bottom: 20px;
+        }
+        
+        .page-title h2 {
+            font-size: 24px;
+            margin-bottom: 5px;
+        }
+        
+        .page-title p {
+            color: #666;
+            font-size: 14px;
+        }
+        
+        .stats {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        
+        .stat-box {
+            background: white;
+            padding: 15px;
+            border: 1px solid #ddd;
+            min-width: 140px;
+            text-align: center;
+            border-radius: 3px;
+        }
+        
+        .stat-box h3 {
+            font-size: 13px;
+            color: #666;
+            margin-bottom: 8px;
+        }
+        
+        .stat-box .number {
+            font-size: 28px;
+            font-weight: bold;
         }
     </style>
-    <script>
-        // Function to logout across all tabs
-        function logoutUser() {
-            localStorage.setItem('logout', 'true');
-            localStorage.removeItem('logout');
-            window.location.href = '../../controllers/AuthController.php?action=logout';
-        }
-        
-        // Listen for logout events from other tabs
-        window.addEventListener('storage', function(event) {
-            if (event.key === 'logout' && event.newValue === 'true') {
-                window.location.href = '../../views/auth/login.php';
-            }
-        });
-        
-        // Check session every 5 seconds
-        setInterval(function() {
-            fetch('../../api/auth.php?action=checkSession')
-                .then(response => response.json())
-                .then(data => {
-                    if (!data.loggedIn) {
-                        window.location.href = '../../views/auth/login.php';
-                    }
-                })
-                .catch(() => {});
-        }, 5000);
-    </script>
 </head>
 <body>
-    <div class="header">
-        <div class="logo"><?php echo SITE_NAME; ?> - Admin Panel</div>
-        <div class="nav">
-            <a href="#">Dashboard</a>
-            <a href="#">Orders</a>
-            <a href="javascript:void(0)" onclick="logoutUser()" class="logout-btn">Logout</a>
+    <div class="top-nav">
+        <h2>Admin Panel</h2>
+        <div class="user-info">
+            <span class="user-name"><?php echo htmlspecialchars(getCurrentUserName()); ?></span>
+            <span class="user-role"><?php echo getCurrentUserRole(); ?></span>
+            <a href="../../views/auth/logout.php" class="logout-btn">Logout</a>
         </div>
     </div>
     
-    <div class="container">
-        <div class="welcome-box">
-            <h2>Welcome, Admin <?php echo htmlspecialchars($adminName); ?>!</h2>
-            <p>Email: <?php echo htmlspecialchars($adminEmail); ?></p>
-            <p>✓ You are logged in as <strong>Administrator</strong></p>
+    <div class="main-container">
+        <div class="sidebar">
+            <a href="dashboard.php" class="active">Dashboard</a>
+            <a href="categories.php">Categories</a>
+            <a href="products.php">Products</a>
+            <a href="orders.php">Orders</a>
         </div>
         
-        <div class="stats">
-            <div class="stat">
-                <div class="number"><?php echo $totalUsers; ?></div>
-                <div class="label">Total Users</div>
+        <div class="content">
+            <div class="page-title">
+                <h2>Dashboard</h2>
+                <p>Welcome, <?php echo htmlspecialchars(getCurrentUserName()); ?></p>
             </div>
-            <div class="stat">
-                <div class="number">0</div>
-                <div class="label">Total Orders</div>
-            </div>
-            <div class="stat">
-                <div class="number">0</div>
-                <div class="label">Products</div>
-            </div>
-            <div class="stat">
-                <div class="number">0</div>
-                <div class="label">Categories</div>
-            </div>
-        </div>
-        
-        <div class="card">
-            <div class="card-header">
-                <h3>Admin Dashboard</h3>
-            </div>
-            <div class="card-body">
-                <p style="margin-bottom: 15px;">✓ Login successful! You can now manage:</p>
-                <div class="quick-links">
-                    <a href="#" class="quick-link">📦 Orders</a>
-                    <a href="#" class="quick-link">🏷️ Categories</a>
-                    <a href="#" class="quick-link">📦 Products</a>
-                    <a href="#" class="quick-link">👥 Users</a>
-                    <a href="#" class="quick-link">⭐ Reviews</a>
+            
+            <div class="stats">
+                <div class="stat-box">
+                    <h3>Total Products</h3>
+                    <div class="number"><?php echo $totalProducts; ?></div>
                 </div>
-            </div>
-        </div>
-        
-        <div class="card">
-            <div class="card-header">
-                <h3>Users List</h3>
-            </div>
-            <div class="card-body">
-                <?php if(count($recentUsers) > 0): ?>
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>ID</th>
-                                <th>Name</th>
-                                <th>Email</th>
-                                <th>Role</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <?php foreach($recentUsers as $row): ?>
-                            <tr>
-                                <td><?php echo $row['id']; ?></dt>
-                                <td><?php echo htmlspecialchars($row['name']); ?></dt>
-                                <td><?php echo htmlspecialchars($row['email']); ?></dt>
-                                <td>
-                                    <span class="badge <?php echo $row['role'] === 'admin' ? 'badge-admin' : 'badge-customer'; ?>">
-                                        <?php echo ucfirst($row['role']); ?>
-                                    </span>
-                                 </dt>
-                            </tr>
-                            <?php endforeach; ?>
-                        </tbody>
-                    </table>
-                <?php else: ?>
-                    <p>No users found.</p>
-                <?php endif; ?>
+                <div class="stat-box">
+                    <h3>Total Categories</h3>
+                    <div class="number"><?php echo $totalCategories; ?></div>
+                </div>
+                <div class="stat-box">
+                    <h3>Low Stock Items</h3>
+                    <div class="number" style="color: <?php echo $lowStockItems > 0 ? '#d9534f' : '#5cb85c'; ?>">
+                        <?php echo $lowStockItems; ?>
+                    </div>
+                </div>
+                <div class="stat-box">
+                    <h3>Pending Orders</h3>
+                    <div class="number"><?php echo $pendingOrders; ?></div>
+                </div>
             </div>
         </div>
     </div>

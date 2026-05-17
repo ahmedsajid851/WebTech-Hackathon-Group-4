@@ -1,190 +1,136 @@
 <?php
+// models/User.php
+
 require_once __DIR__ . '/../config/db.php';
 
 class User {
-    /**
-     * @var DatabaseConnection $db
-     */
-    private $db;
+    private $conn;
+    private $table_name = "users";
     
-    public function __construct() {
-        $this->db = new DatabaseConnection();
-    }
-    
-    /**
-     * Register new user
-     * @param string $name
-     * @param string $email
-     * @param string $password
-     * @param string|null $phone
-     * @return array<string,mixed>
-     */
-    public function register($name, $email, $password, $phone = null) {
-        // Check if email already exists
-        $existingUser = $this->findByEmail($email);
-        if ($existingUser && $existingUser->num_rows > 0) {
-            return ["success" => false, "message" => "Email already registered"];
-        }
-        
-        // Hash password
-        $password_hash = password_hash($password, PASSWORD_DEFAULT);
-        
-        // Prepare data for insertion
-        $data = [
-            'name' => $name,
-            'email' => $email,
-            'password_hash' => $password_hash,
-            'role' => 'customer'
-        ];
-        
-        // Add phone if provided
-        if ($phone && !empty($phone)) {
-            $data['phone'] = $phone;
-        }
-        
-        // Insert user
-        $result = $this->db->insert('users', $data);
-        
-        if ($result) {
-            return ["success" => true, "message" => "Registration successful"];
+    // Fixed constructor - use Database class
+    public function __construct($connection = null){
+        if($connection === null){
+            $database = new Database();
+            $this->conn = $database->openConnection();
         } else {
-            return ["success" => false, "message" => "Registration failed. Please try again."];
+            $this->conn = $connection;
         }
     }
     
-    /**
-     * Login user
-     * @param string $email
-     * @param string $password
-     * @return array<string,mixed>
-     */
-    public function login($email, $password) {
-        $result = $this->findByEmail($email);
+    // Authenticate user
+    public function authenticate($email, $password){
+        $sql = "SELECT * FROM " . $this->table_name . " WHERE email = ? LIMIT 1";
         
-        if ($result && $result->num_rows > 0) {
+        $statement = $this->conn->prepare($sql);
+        $statement->bind_param("s", $email);
+        $statement->execute();
+        
+        $result = $statement->get_result();
+        
+        if($result->num_rows === 1){
             $user = $result->fetch_assoc();
-            
-            if (password_verify($password, $user['password_hash'])) {
-                // Set session
-                $_SESSION['user_id'] = $user['id'];
-                $_SESSION['user_name'] = $user['name'];
-                $_SESSION['user_email'] = $user['email'];
-                $_SESSION['role'] = $user['role'];
-                $_SESSION['isLoggedIn'] = true;
-                
-                return ["success" => true, "message" => "Login successful", "role" => $user['role']];
-            } else {
-                return ["success" => false, "message" => "Invalid password"];
+            if(password_verify($password, $user['password_hash'])){
+                return $user;
             }
-        } else {
-            return ["success" => false, "message" => "Email not found"];
         }
+        return false;
     }
     
-    /**
-     * Find user by email
-     * @param string $email
-     * @return mysqli_result|bool
-     */
-    public function findByEmail($email) {
-        return $this->db->select('users', ['email' => $email]);
-    }
-    
-    /**
-     * Find user by ID
-     * @param int $id
-     * @return mysqli_result|bool
-     */
-    public function findById($id) {
-        return $this->db->select('users', ['id' => $id]);
-    }
-    
-    /**
-     * Get all users
-     * @return mysqli_result|bool
-     */
-    public function getAllUsers() {
-        $connection = $this->db->openConnection();
-        $sql = "SELECT id, name, email, phone, role, created_at FROM users ORDER BY created_at DESC";
-        $result = $connection->query($sql);
-        $this->db->closeConnection();
-        return $result;
-    }
-    
-    /**
-     * Update user profile
-     * @param int $userId
-     * @param string $name
-     * @param string|null $phone
-     * @return mysqli_result|bool
-     */
-    public function updateProfile($userId, $name, $phone) {
-        return $this->db->update('users', 
-            ['name' => $name, 'phone' => $phone], 
-            ['id' => $userId]
-        );
-    }
-    
-    /**
-     * Update user role (admin only)
-     * @param int $userId
-     * @param string $role
-     * @return mysqli_result|bool
-     */
-    public function updateRole($userId, $role) {
-        return $this->db->update('users', ['role' => $role], ['id' => $userId]);
-    }
-    
-    /**
-     * Delete user
-     * @param int $userId
-     * @return mysqli_result|bool
-     */
-    public function deleteUser($userId) {
-        return $this->db->delete('users', ['id' => $userId]);
-    }
-    
-    /**
-     * Logout
-     * @return array<string,mixed>
-     */
-    public function logout() {
-        session_destroy();
-        return ["success" => true, "message" => "Logged out successfully"];
-    }
-    
-    /**
-     * Change password
-     * @param int $userId
-     * @param string $oldPassword
-     * @param string $newPassword
-     * @return array<string,mixed>
-     */
-    public function changePassword($userId, $oldPassword, $newPassword) {
-        // Get user by ID
-        $result = $this->findById($userId);
+    // Check if email exists
+    public function emailExists($email){
+        $sql = "SELECT id FROM " . $this->table_name . " WHERE email = ? LIMIT 1";
         
-        if ($result && $result->num_rows > 0) {
-            $user = $result->fetch_assoc();
-            
-            // Verify old password
-            if (password_verify($oldPassword, $user['password_hash'])) {
-                // Hash new password
-                $newHash = password_hash($newPassword, PASSWORD_DEFAULT);
-                
-                // Update password in database
-                $updateResult = $this->db->update('users', ['password_hash' => $newHash], ['id' => $userId]);
-                
-                if ($updateResult) {
-                    return ["success" => true, "message" => "Password changed successfully"];
-                } else {
-                    return ["success" => false, "message" => "Failed to update password"];
-                }
-            } else {
-                return ["success" => false, "message" => "Current password is incorrect"];
-            }
-        } else {
-            return ["success" => false, "message" => "User not found"];
+        $statement = $this->conn->prepare($sql);
+        $statement->bind_param("s", $email);
+        $statement->execute();
+        
+        $result = $statement->get_result();
+        return $result->num_rows > 0;
+    }
+    
+    // Create new user
+    public function createUser($name, $email, $password_hash, $phone = null){
+        $sql = "INSERT INTO " . $this->table_name . " 
+                (name, email, password_hash, phone, role, created_at) 
+                VALUES (?, ?, ?, ?, 'customer', NOW())";
+        
+        $statement = $this->conn->prepare($sql);
+        $statement->bind_param("ssss", $name, $email, $password_hash, $phone);
+        
+        if($statement->execute()){
+            return $this->conn->insert_id;
+        }
+        return false;
+    }
+    
+    // Get user by ID
+    public function getUserById($user_id){
+        $sql = "SELECT id, name, email, phone, role, shipping_addresses, created_at 
+                FROM " . $this->table_name . " 
+                WHERE id = ? LIMIT 1";
+        
+        $statement = $this->conn->prepare($sql);
+        $statement->bind_param("i", $user_id);
+        $statement->execute();
+        
+        $result = $statement->get_result();
+        
+        if($result->num_rows === 1){
+            return $result->fetch_assoc();
+        }
+        return false;
+    }
+    
+    // Get user by remember token
+    public function getUserByRememberToken($token){
+        $sql = "SELECT * FROM " . $this->table_name . " WHERE remember_token = ? LIMIT 1";
+        
+        $statement = $this->conn->prepare($sql);
+        $statement->bind_param("s", $token);
+        $statement->execute();
+        
+        $result = $statement->get_result();
+        
+        if($result->num_rows === 1){
+            return $result->fetch_assoc();
+        }
+        return false;
+    }
+    
+    // Set remember me token
+    public function setRememberToken($user_id, $token){
+        $sql = "UPDATE " . $this->table_name . " SET remember_token = ? WHERE id = ?";
+        
+        $statement = $this->conn->prepare($sql);
+        $statement->bind_param("si", $token, $user_id);
+        return $statement->execute();
+    }
+    
+    // Update user profile
+    public function updateProfile($user_id, $name, $email, $phone, $shipping_addresses = null){
+        $sql = "UPDATE " . $this->table_name . " 
+                SET name = ?, email = ?, phone = ?, shipping_addresses = ? 
+                WHERE id = ?";
+        
+        $statement = $this->conn->prepare($sql);
+        $shipping_json = $shipping_addresses ? json_encode($shipping_addresses) : null;
+        $statement->bind_param("ssssi", $name, $email, $phone, $shipping_json, $user_id);
+        return $statement->execute();
+    }
+    
+    // Update password
+    public function updatePassword($user_id, $new_password_hash){
+        $sql = "UPDATE " . $this->table_name . " SET password_hash = ? WHERE id = ?";
+        
+        $statement = $this->conn->prepare($sql);
+        $statement->bind_param("si", $new_password_hash, $user_id);
+        return $statement->execute();
+    }
+    
+    // Close connection
+    public function closeConnection(){
+        if($this->conn){
+            $this->conn->close();
         }
     }
 }
