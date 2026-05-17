@@ -12,7 +12,11 @@ if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'admin') {
     die("Access Denied");
 }
 
-$categoryModel = new Category($pdo);
+// FIXED: Create database connection using your Database class
+$database = new Database();
+$connection = $database->openConnection();
+
+$categoryModel = new Category($connection);
 $parentCategories = $categoryModel->getParentCategories();
 $error = '';
 

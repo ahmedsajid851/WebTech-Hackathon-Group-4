@@ -1,31 +1,15 @@
 <?php
+require_once __DIR__ . '/../config/config.php';
+require_once __DIR__ . '/../config/helpers.php';
 
-require_once "../config/db.php";
-require_once "../config/helpers.php";
-
-require_login();
+// If user is logged in, redirect to dashboard
+if (isLoggedIn()) {
+    if (isAdmin()) {
+        redirect("views/admin/dashboard.php");
+    } else {
+        redirect("views/dashboard.php");
+    }
+} else {
+    redirect("views/auth/login.php");
+}
 ?>
-
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Home</title>
-</head>
-<body>
-
-<h1>
-    Welcome
-    <?= $_SESSION['name'] ?>
-</h1>
-
-<p>
-    Role:
-    <?= $_SESSION['role'] ?>
-</p>
-
-<a href="../controllers/AuthController.php?action=logout">
-    Logout
-</a>
-
-</body>
-</html>
