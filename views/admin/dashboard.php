@@ -47,7 +47,6 @@ if($allUsers && $allUsers->num_rows > 0){
             background: #f5f5f5;
         }
         
-        /* Header */
         .header {
             background: #2c3e50;
             color: white;
@@ -67,20 +66,19 @@ if($allUsers && $allUsers->num_rows > 0){
             text-decoration: none;
             margin-left: 20px;
             padding: 5px 10px;
+            cursor: pointer;
         }
         
         .nav a:hover {
             background: #34495e;
         }
         
-        /* Container */
         .container {
             max-width: 1200px;
             margin: 30px auto;
             padding: 0 20px;
         }
         
-        /* Welcome Box */
         .welcome-box {
             background: white;
             padding: 25px;
@@ -99,7 +97,27 @@ if($allUsers && $allUsers->num_rows > 0){
             color: #666;
         }
         
-        /* Stats */
+        .card {
+            background: white;
+            border: 1px solid #ddd;
+            margin-bottom: 25px;
+            border-radius: 5px;
+        }
+        
+        .card-header {
+            padding: 15px 20px;
+            border-bottom: 1px solid #ddd;
+            background: #f9f9f9;
+        }
+        
+        .card-header h3 {
+            color: #333;
+        }
+        
+        .card-body {
+            padding: 20px;
+        }
+        
         .stats {
             display: flex;
             gap: 20px;
@@ -128,29 +146,6 @@ if($allUsers && $allUsers->num_rows > 0){
             margin-top: 5px;
         }
         
-        /* Card */
-        .card {
-            background: white;
-            border: 1px solid #ddd;
-            margin-bottom: 25px;
-            border-radius: 5px;
-        }
-        
-        .card-header {
-            padding: 15px 20px;
-            border-bottom: 1px solid #ddd;
-            background: #f9f9f9;
-        }
-        
-        .card-header h3 {
-            color: #333;
-        }
-        
-        .card-body {
-            padding: 20px;
-        }
-        
-        /* Table */
         table {
             width: 100%;
             border-collapse: collapse;
@@ -167,7 +162,6 @@ if($allUsers && $allUsers->num_rows > 0){
             font-weight: bold;
         }
         
-        /* Role Badge */
         .badge {
             display: inline-block;
             padding: 3px 8px;
@@ -185,12 +179,10 @@ if($allUsers && $allUsers->num_rows > 0){
             color: white;
         }
         
-        /* Quick Links */
         .quick-links {
             display: flex;
             gap: 15px;
             flex-wrap: wrap;
-            margin-top: 10px;
         }
         
         .quick-link {
@@ -206,22 +198,6 @@ if($allUsers && $allUsers->num_rows > 0){
             color: white;
         }
         
-        /* Features List */
-        .features-list {
-            list-style: none;
-            padding: 0;
-        }
-        
-        .features-list li {
-            padding: 8px 0;
-            border-bottom: 1px solid #eee;
-        }
-        
-        .features-list li:last-child {
-            border-bottom: none;
-        }
-        
-        /* Logout Button */
         .logout-btn {
             background: #e74c3c;
             padding: 5px 15px;
@@ -232,28 +208,51 @@ if($allUsers && $allUsers->num_rows > 0){
             background: #c0392b;
         }
     </style>
+    <script>
+        // Function to logout across all tabs
+        function logoutUser() {
+            localStorage.setItem('logout', 'true');
+            localStorage.removeItem('logout');
+            window.location.href = '../../controllers/AuthController.php?action=logout';
+        }
+        
+        // Listen for logout events from other tabs
+        window.addEventListener('storage', function(event) {
+            if (event.key === 'logout' && event.newValue === 'true') {
+                window.location.href = '../../views/auth/login.php';
+            }
+        });
+        
+        // Check session every 5 seconds
+        setInterval(function() {
+            fetch('../../api/auth.php?action=checkSession')
+                .then(response => response.json())
+                .then(data => {
+                    if (!data.loggedIn) {
+                        window.location.href = '../../views/auth/login.php';
+                    }
+                })
+                .catch(() => {});
+        }, 5000);
+    </script>
 </head>
 <body>
-    <!-- Header -->
     <div class="header">
         <div class="logo"><?php echo SITE_NAME; ?> - Admin Panel</div>
         <div class="nav">
             <a href="#">Dashboard</a>
             <a href="#">Orders</a>
-            <a href="../../controllers/AuthController.php?action=logout" class="logout-btn">Logout</a>
+            <a href="javascript:void(0)" onclick="logoutUser()" class="logout-btn">Logout</a>
         </div>
     </div>
     
-    <!-- Main Content -->
     <div class="container">
-        <!-- Welcome Box -->
         <div class="welcome-box">
             <h2>Welcome, Admin <?php echo htmlspecialchars($adminName); ?>!</h2>
             <p>Email: <?php echo htmlspecialchars($adminEmail); ?></p>
             <p>✓ You are logged in as <strong>Administrator</strong></p>
         </div>
         
-        <!-- Stats -->
         <div class="stats">
             <div class="stat">
                 <div class="number"><?php echo $totalUsers; ?></div>
@@ -273,7 +272,6 @@ if($allUsers && $allUsers->num_rows > 0){
             </div>
         </div>
         
-        <!-- Admin Dashboard Info -->
         <div class="card">
             <div class="card-header">
                 <h3>Admin Dashboard</h3>
@@ -290,7 +288,6 @@ if($allUsers && $allUsers->num_rows > 0){
             </div>
         </div>
         
-        <!-- Recent Users -->
         <div class="card">
             <div class="card-header">
                 <h3>Users List</h3>
@@ -310,7 +307,7 @@ if($allUsers && $allUsers->num_rows > 0){
                             <?php foreach($recentUsers as $row): ?>
                             <tr>
                                 <td><?php echo $row['id']; ?></td>
-                                <td><?php echo htmlspecialchars($row['name']); ?></td>
+                                <td><?php echo htmlspecialchars($row['name']); ?></dt>
                                 <td><?php echo htmlspecialchars($row['email']); ?></dt>
                                 <td>
                                     <span class="badge <?php echo $row['role'] === 'admin' ? 'badge-admin' : 'badge-customer'; ?>">

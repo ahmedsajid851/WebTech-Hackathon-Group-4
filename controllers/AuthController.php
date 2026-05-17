@@ -68,22 +68,7 @@ class AuthController {
             
             if ($result["success"]) {
                 $_SESSION["flash_success"] = $result["message"];
-                
-                // DEBUG CODE - Shows registration success and provides manual link
-                echo "<html>";
-                echo "<head><title>Registration Successful</title></head>";
-                echo "<body style='font-family: Arial, sans-serif; text-align: center; padding: 50px;'>";
-                echo "<h2 style='color: green;'>✓ Registration Successful!</h2>";
-                echo "<p>" . $result["message"] . "</p>";
-                echo "<p><strong>Name:</strong> " . htmlspecialchars($name) . "</p>";
-                echo "<p><strong>Email:</strong> " . htmlspecialchars($email) . "</p>";
-                echo "<p>You will be redirected in 3 seconds...</p>";
-                echo "<p>Or <a href='../views/auth/login.php' style='color: blue;'>Click here to login</a></p>";
-                echo "<script>";
-                echo "setTimeout(function() { window.location.href = '../views/auth/login.php'; }, 3000);";
-                echo "</script>";
-                echo "</body>";
-                echo "</html>";
+                header("Location: ../views/auth/login.php");
                 exit();
             } else {
                 $_SESSION["registerError"] = $result["message"];
@@ -146,7 +131,19 @@ class AuthController {
     
     // Handle logout
     public function logout() {
+        // Destroy all session data
         session_destroy();
+        
+        // Clear session cookie
+        if (ini_get("session.use_cookies")) {
+            $params = session_get_cookie_params();
+            setcookie(session_name(), '', time() - 42000,
+                $params["path"], $params["domain"],
+                $params["secure"], $params["httponly"]
+            );
+        }
+        
+        // Redirect to login page
         header("Location: ../views/auth/login.php");
         exit();
     }

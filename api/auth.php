@@ -52,6 +52,12 @@ switch ($action) {
         }
         break;
         
+    case 'checkSession':
+        session_start();
+        $isLoggedIn = isset($_SESSION['isLoggedIn']) && $_SESSION['isLoggedIn'] === true;
+        $response = ['loggedIn' => $isLoggedIn];
+        break;
+        
     default:
         $response = ['success' => false, 'message' => 'Invalid action'];
 }

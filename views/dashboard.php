@@ -211,6 +211,20 @@ if($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["change_password"])){
         }
     </style>
     <script>
+        // Function to logout across all tabs
+        function logoutUser() {
+            localStorage.setItem('logout', 'true');
+            localStorage.removeItem('logout');
+            window.location.href = '../controllers/AuthController.php?action=logout';
+        }
+        
+        // Listen for logout events from other tabs
+        window.addEventListener('storage', function(event) {
+            if (event.key === 'logout' && event.newValue === 'true') {
+                window.location.href = '../views/auth/login.php';
+            }
+        });
+        
         function showProfile() {
             document.getElementById('profileCard').classList.remove('hidden');
             document.getElementById('productCard').classList.add('hidden');
@@ -220,6 +234,18 @@ if($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["change_password"])){
             document.getElementById('profileCard').classList.add('hidden');
             document.getElementById('productCard').classList.remove('hidden');
         }
+        
+        // Check session every 5 seconds (backup method)
+        setInterval(function() {
+            fetch('../api/auth.php?action=checkSession')
+                .then(response => response.json())
+                .then(data => {
+                    if (!data.loggedIn) {
+                        window.location.href = '../views/auth/login.php';
+                    }
+                })
+                .catch(() => {});
+        }, 5000);
     </script>
 </head>
 <body>
@@ -229,7 +255,7 @@ if($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["change_password"])){
             <a onclick="showHome()">Home</a>
             <a href="#">My Orders</a>
             <a onclick="showProfile()">My Profile</a>
-            <a href="../controllers/AuthController.php?action=logout">Logout</a>
+            <a href="javascript:void(0)" onclick="logoutUser()">Logout</a>
         </div>
     </div>
     
