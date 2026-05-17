@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: May 17, 2026 at 06:21 AM
+-- Generation Time: May 17, 2026 at 07:09 AM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -165,7 +165,8 @@ INSERT INTO `users` (`id`, `name`, `email`, `password_hash`, `phone`, `role`, `s
 (2, 'Jane Smith', 'jane@example.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', '4445556666', 'customer', NULL, NULL, '2026-05-16 19:03:00'),
 (3, 'Bob Wilson', 'bob@example.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', '7778889999', 'customer', NULL, NULL, '2026-05-16 19:03:00'),
 (4, 'Istiak Ahmed Saklain', 'istiakahmed@gmail.com', '$2y$10$E7GkkAjW/INYpjrqqsnnke8sPbuY8nvZBcx1nZP/6iXnVwq9D9e1.', '01732899674', 'customer', NULL, NULL, '2026-05-17 03:50:57'),
-(5, 'Istiak Ahmed Saklain', 'istiakahmedsci@gmail.com', '$2y$10$GT8NQz9TiwrFKpyKg4ehFOuZ6zY9w7U3g1vxxu00OpT8hZx5buZbu', '01732899674', 'customer', NULL, NULL, '2026-05-17 03:54:38');
+(5, 'Istiak Ahmed Saklain', 'istiakahmedsci@gmail.com', '$2y$10$GT8NQz9TiwrFKpyKg4ehFOuZ6zY9w7U3g1vxxu00OpT8hZx5buZbu', '01732899674', 'customer', NULL, NULL, '2026-05-17 03:54:38'),
+(6, 'Admin User', 'admin@example.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', '1234567890', 'admin', NULL, NULL, '2026-05-17 05:06:09');
 
 --
 -- Indexes for dumped tables
@@ -253,7 +254,7 @@ ALTER TABLE `reviews`
 -- AUTO_INCREMENT for table `users`
 --
 ALTER TABLE `users`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
 
 --
 -- Constraints for dumped tables

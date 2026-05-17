@@ -1,4 +1,6 @@
 <?php
+require_once __DIR__ . '/../../config/helpers.php';
+header('Location: ' . BASE_URL . '/controllers/AuthController.php?action=logout');
 // views/auth/logout.php
 
 session_start();

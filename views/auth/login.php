@@ -1,194 +1,97 @@
 <?php
-// views/auth/login.php
+require_once __DIR__ . '/../../config/helpers.php';
+startSecureSession();
 
-require_once __DIR__ . '/../../config/db.php';
-
-// Start session if not already started
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
+// Check remember me cookie
+if (!isset($_SESSION['user_id']) && isset($_COOKIE['remember_token'])) {
+    require_once __DIR__ . '/../../models/User.php';
+    $userModel = new User();
+    $token = $_COOKIE['remember_token'];
+    $user = $userModel->getUserByRememberToken($token);
+    
+    if ($user) {
+        $_SESSION['user_id'] = $user['id'];
+        $_SESSION['name'] = $user['name'];
+        $_SESSION['email'] = $user['email'];
+        $_SESSION['role'] = $user['role'];
+        
+        if ($user['role'] === 'admin') {
+            header('Location: ' . BASE_URL . '/views/admin/dashboard.php');
+        } else {
+            header('Location: ' . BASE_URL . '/views/dashboard.php');
+        }
+        exit();
+    }
 }
 
 // Redirect if already logged in
 if (isset($_SESSION['user_id'])) {
     if ($_SESSION['role'] === 'admin') {
-        header("Location: /WebTech/WebTech-Hackathon-Group-4/views/admin/dashboard.php");
-        exit();
+        header('Location: ' . BASE_URL . '/views/admin/dashboard.php');
     } else {
-        header("Location: /WebTech/WebTech-Hackathon-Group-4/views/customer/catalogue.php");
-        exit();
+        header('Location: ' . BASE_URL . '/views/dashboard.php');
     }
+    exit();
 }
 
-// Handle login form submission
-$error = '';
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $email = trim($_POST['email'] ?? '');
-    $password = $_POST['password'] ?? '';
-    $remember_me = isset($_POST['remember_me']);
-    
-    if (empty($email) || empty($password)) {
-        $error = 'Please fill in all fields';
-    } else {
-        try {
-            $stmt = $pdo->prepare("SELECT id, name, email, password_hash, role FROM users WHERE email = ?");
-            $stmt->execute([$email]);
-            $user = $stmt->fetch(PDO::FETCH_ASSOC);
-            
-            if ($user && password_verify($password, $user['password_hash'])) {
-                $_SESSION['user_id'] = $user['id'];
-                $_SESSION['name'] = $user['name'];
-                $_SESSION['email'] = $user['email'];
-                $_SESSION['role'] = $user['role'];
-                
-                if ($remember_me) {
-                    $token = bin2hex(random_bytes(32));
-                    $hashed_token = password_hash($token, PASSWORD_DEFAULT);
-                    
-                    $updateStmt = $pdo->prepare("UPDATE users SET remember_token = ? WHERE id = ?");
-                    $updateStmt->execute([$hashed_token, $user['id']]);
-                    
-                    setcookie('remember_token', $token, time() + (86400 * 30), '/');
-                }
-                
-                if ($user['role'] === 'admin') {
-                    header("Location: ../../views/admin/dashboard.php");
-                } else {
-                    header("Location: ../../views/customer/catalogue.php");
-                }
-                exit();
-            } else {
-                $error = 'Invalid email or password';
-            }
-        } catch (PDOException $e) {
-            $error = 'Login failed. Please try again.';
-        }
-    }
-}
+$errors = $_SESSION['errors'] ?? [];
+$oldInput = $_SESSION['old_input'] ?? [];
+$error = $_SESSION['error'] ?? null;
+
+unset($_SESSION['errors']);
+unset($_SESSION['old_input']);
+unset($_SESSION['error']);
 ?>
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Login - E-Commerce Store</title>
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            background: #f5f5f5;
-            margin: 0;
-            padding: 0;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-        }
-        
-        .login-container {
-            background: white;
-            padding: 30px;
-            border-radius: 5px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-            width: 350px;
-        }
-        
-        h2 {
-            margin: 0 0 20px 0;
-            text-align: center;
-            color: #333;
-        }
-        
-        .form-group {
-            margin-bottom: 15px;
-        }
-        
-        label {
-            display: block;
-            margin-bottom: 5px;
-            color: #666;
-            font-size: 14px;
-        }
-        
-        input[type="email"],
-        input[type="password"] {
-            width: 100%;
-            padding: 8px;
-            border: 1px solid #ddd;
-            border-radius: 3px;
-            box-sizing: border-box;
-        }
-        
-        .checkbox {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-        
-        .checkbox label {
-            margin: 0;
-        }
-        
-        button {
-            width: 100%;
-            padding: 10px;
-            background: #333;
-            color: white;
-            border: none;
-            border-radius: 3px;
-            cursor: pointer;
-            font-size: 16px;
-        }
-        
-        button:hover {
-            background: #555;
-        }
-        
-        .error {
-            background: #f8d7da;
-            color: #721c24;
-            padding: 10px;
-            border-radius: 3px;
-            margin-bottom: 15px;
-            font-size: 14px;
-        }
-        
-        .register-link {
-            text-align: center;
-            margin-top: 15px;
-            font-size: 14px;
-        }
-        
-        .register-link a {
-            color: #333;
-            text-decoration: none;
-        }
-        
-        .register-link a:hover {
-            text-decoration: underline;
-        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: Arial, sans-serif; background: #f4f4f4; min-height: 100vh; display: flex; justify-content: center; align-items: center; }
+        .container { background: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); width: 400px; }
+        h2 { margin-bottom: 20px; color: #333; text-align: center; }
+        .form-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; color: #555; }
+        input { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; }
+        .error { color: red; font-size: 12px; margin-top: 5px; }
+        .error-msg { color: red; font-size: 14px; margin-bottom: 15px; text-align: center; }
+        button { width: 100%; padding: 12px; background: #007bff; color: white; border: none; border-radius: 4px; font-size: 16px; cursor: pointer; }
+        button:hover { background: #0056b3; }
+        .register-link { text-align: center; margin-top: 15px; }
+        .register-link a { color: #007bff; text-decoration: none; }
+        .remember { margin: 10px 0; display: flex; align-items: center; gap: 8px; }
+        .remember input { width: auto; }
     </style>
 </head>
 <body>
-    <div class="login-container">
-        <h2>Login</h2>
+    <div class="container">
+        <h2>Login to Your Account</h2>
         
         <?php if ($error): ?>
-            <div class="error"><?php echo htmlspecialchars($error); ?></div>
+            <div class="error-msg"><?php echo htmlspecialchars($error); ?></div>
         <?php endif; ?>
         
-        <form method="POST" action="">
+        <form method="POST" action="<?php echo BASE_URL; ?>/controllers/AuthController.php?action=login">
             <div class="form-group">
-                <label for="email">Email</label>
-                <input type="email" id="email" name="email" required>
+                <label>Email</label>
+                <input type="email" name="email" value="<?php echo htmlspecialchars($oldInput['email'] ?? ''); ?>">
+                <?php if (isset($errors['email'])): ?>
+                    <div class="error"><?php echo $errors['email']; ?></div>
+                <?php endif; ?>
             </div>
             
             <div class="form-group">
-                <label for="password">Password</label>
-                <input type="password" id="password" name="password" required>
+                <label>Password</label>
+                <input type="password" name="password">
+                <?php if (isset($errors['password'])): ?>
+                    <div class="error"><?php echo $errors['password']; ?></div>
+                <?php endif; ?>
             </div>
             
-            <div class="form-group checkbox">
-                <input type="checkbox" id="remember_me" name="remember_me">
+            <div class="remember">
+                <input type="checkbox" name="remember_me" id="remember_me">
                 <label for="remember_me">Remember Me</label>
             </div>
             
@@ -196,7 +99,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         </form>
         
         <div class="register-link">
-            Don't have an account? <a href="register.php">Register here</a>
+            Don't have an account? <a href="<?php echo BASE_URL; ?>/views/auth/register.php">Register here</a>
         </div>
     </div>
 </body>

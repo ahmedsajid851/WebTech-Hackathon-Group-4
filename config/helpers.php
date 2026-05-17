@@ -1,58 +1,36 @@
 <?php
-function is_logged_in() {
-    return isset($_SESSION['user_id']);
-}
+define('BASE_URL', 'http://localhost/WebTech-Hackathon-Group-4');
 
-function require_login() {
-    if (!is_logged_in()) {
-        header("Location: /views/auth/login.php");
-        exit;
-    }
-}
-
-function require_admin() {
-    if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'admin') {
-        die("Access Denied");
-    }
-}
-
-function startSessionIfNeeded() {
-    if (session_status() === PHP_SESSION_NONE) {
+function startSecureSession(){
+    if(session_status() === PHP_SESSION_NONE){
         session_start();
     }
 }
 
-function getCurrentUserId() {
-    startSessionIfNeeded();
-    return $_SESSION['user_id'] ?? null;
-}
-
-function getCurrentUserName() {
-    startSessionIfNeeded();
-    return $_SESSION['name'] ?? 'Guest';
-}
-
-function getCurrentUserRole() {
-    startSessionIfNeeded();
-    return $_SESSION['role'] ?? 'guest';
-}
-
-function generateCsrfToken() {
-    startSessionIfNeeded();
-    if (empty($_SESSION['csrf_token'])) {
-        $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+function require_admin(){
+    startSecureSession();
+    if(!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin'){
+        header('Location: ' . BASE_URL . '/views/auth/login.php');
+        exit();
     }
-    return $_SESSION['csrf_token'];
 }
 
-function verifyCsrfToken($token) {
-    startSessionIfNeeded();
-    return isset($_SESSION['csrf_token']) && hash_equals($_SESSION['csrf_token'], $token);
+function require_login(){
+    startSecureSession();
+    if(!isset($_SESSION['user_id'])){
+        header('Location: ' . BASE_URL . '/views/auth/login.php');
+        exit();
+    }
 }
 
-// Function to get database connection (adjust based on your database.php)
-function getDBConnection() {
-    require_once __DIR__ . '/database.php';
-    return $db;
+function getStatusBadgeClass($status){
+    $classes = [
+        'Pending' => 'badge-warning',
+        'Processing' => 'badge-info',
+        'Shipped' => 'badge-primary',
+        'Delivered' => 'badge-success',
+        'Cancelled' => 'badge-danger'
+    ];
+    return $classes[$status] ?? 'badge-secondary';
 }
 ?>
