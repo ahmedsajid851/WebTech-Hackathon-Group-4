@@ -44,8 +44,8 @@ class AuthController {
             if (empty($password)) {
                 $_SESSION["passwordError"] = "Password is required";
                 $hasError = true;
-            } elseif (strlen($password) < 6) {
-                $_SESSION["passwordError"] = "Password must be at least 6 characters";
+            } elseif (strlen($password) < 8) {
+                $_SESSION["passwordError"] = "Password must be at least 8 characters";
                 $hasError = true;
             } else {
                 unset($_SESSION["passwordError"]);
