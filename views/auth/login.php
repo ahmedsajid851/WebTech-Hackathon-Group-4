@@ -27,94 +27,135 @@ unset($_SESSION["loginError"]);
 unset($_SESSION["email"]);
 ?>
 
-<html>
+<!DOCTYPE html>
+<html lang="en">
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Login - <?php echo SITE_NAME; ?></title>
     <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
         body {
             font-family: Arial, sans-serif;
+            background: #f0f0f0;
             margin: 0;
             padding: 20px;
-            background: #f0f0f0;
         }
         .container {
             max-width: 400px;
-            margin: 50px auto;
+            margin: 80px auto;
             background: white;
-            padding: 20px;
+            padding: 30px;
             border: 1px solid #ddd;
+            border-radius: 5px;
         }
         h2 {
             margin-top: 0;
+            margin-bottom: 25px;
             color: #333;
+            text-align: center;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            font-weight: bold;
+            display: block;
+            margin-bottom: 8px;
         }
         input {
             width: 100%;
-            padding: 8px;
-            margin: 5px 0 15px 0;
+            padding: 10px;
             border: 1px solid #ddd;
+            border-radius: 3px;
             box-sizing: border-box;
+            font-size: 14px;
+        }
+        input:focus {
+            outline: none;
+            border-color: #2c3e50;
         }
         button {
-            background: #333;
+            background: #2c3e50;
             color: white;
-            padding: 10px 20px;
+            padding: 12px 20px;
             border: none;
+            border-radius: 3px;
             cursor: pointer;
             width: 100%;
+            font-size: 16px;
+            margin-top: 10px;
         }
         button:hover {
-            background: #555;
+            background: #34495e;
         }
         .error {
             color: red;
-            font-size: 14px;
-            margin: 5px 0;
+            font-size: 13px;
+            margin-top: 5px;
         }
         .success {
             color: green;
             font-size: 14px;
-            margin: 10px 0;
+            margin-bottom: 20px;
             padding: 10px;
             background: #e8f5e9;
             border: 1px solid #4caf50;
-        }
-        .register-link {
-            margin-top: 15px;
+            border-radius: 3px;
             text-align: center;
         }
-        .register-link a {
-            color: #333;
+        .register-link {
+            margin-top: 20px;
+            text-align: center;
+            padding-top: 15px;
+            border-top: 1px solid #eee;
         }
-        label {
-            font-weight: bold;
+        .register-link a {
+            color: #2c3e50;
+            text-decoration: none;
+        }
+        .register-link a:hover {
+            text-decoration: underline;
+        }
+        .login-error {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 10px;
+            margin-bottom: 20px;
+            border: 1px solid #f5c6cb;
+            border-radius: 3px;
+            text-align: center;
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <h2>Login</h2>
+        <h2>Login to <?php echo SITE_NAME; ?></h2>
         
         <?php if($successMsg): ?>
             <div class="success"><?php echo $successMsg; ?></div>
         <?php endif; ?>
         
         <?php if($loginError): ?>
-            <div class="error"><?php echo $loginError; ?></div>
+            <div class="login-error"><?php echo $loginError; ?></div>
         <?php endif; ?>
         
         <form method="post" action="../../controllers/AuthController.php?action=login">
-            <div>
-                <label>Email:</label><br/>
-                <input type="email" name="email" placeholder="Enter email" value="<?php echo htmlspecialchars($email); ?>" required/>
+            <div class="form-group">
+                <label>Email Address</label>
+                <input type="email" name="email" placeholder="Enter your email" value="<?php echo htmlspecialchars($email); ?>" required/>
                 <?php if($emailError): ?>
                     <div class="error"><?php echo $emailError; ?></div>
                 <?php endif; ?>
             </div>
             
-            <div>
-                <label>Password:</label><br/>
-                <input type="password" name="password" placeholder="Enter password" required/>
+            <div class="form-group">
+                <label>Password</label>
+                <input type="password" name="password" placeholder="Enter your password" required/>
                 <?php if($passwordError): ?>
                     <div class="error"><?php echo $passwordError; ?></div>
                 <?php endif; ?>

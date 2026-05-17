@@ -3,6 +3,9 @@ require_once __DIR__ . '/../models/User.php';
 require_once __DIR__ . '/../config/helpers.php';
 
 class AuthController {
+    /**
+     * @var User $userModel
+     */
     private $userModel;
     
     public function __construct() {

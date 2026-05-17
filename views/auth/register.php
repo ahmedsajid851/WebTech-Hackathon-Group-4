@@ -33,8 +33,11 @@ unset($_SESSION["email"]);
 unset($_SESSION["phone"]);
 ?>
 
-<html>
+<!DOCTYPE html>
+<html lang="en">
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Register - <?php echo SITE_NAME; ?></title>
     <script>
         function checkEmail() {
@@ -110,6 +113,11 @@ unset($_SESSION["phone"]);
         }
         label {
             font-weight: bold;
+        }
+        hr {
+            margin: 20px 0;
+            border: none;
+            border-top: 1px solid #ddd;
         }
     </style>
 </head>

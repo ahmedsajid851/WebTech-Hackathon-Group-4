@@ -306,7 +306,7 @@ if($allUsers && $allUsers->num_rows > 0){
                         <tbody>
                             <?php foreach($recentUsers as $row): ?>
                             <tr>
-                                <td><?php echo $row['id']; ?></td>
+                                <td><?php echo $row['id']; ?></dt>
                                 <td><?php echo htmlspecialchars($row['name']); ?></dt>
                                 <td><?php echo htmlspecialchars($row['email']); ?></dt>
                                 <td>

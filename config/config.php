@@ -7,7 +7,7 @@ if (session_status() === PHP_SESSION_NONE) {
 }
 
 // Site configuration
-define('SITE_NAME', 'Ecommerce Lab');
+define('SITE_NAME', 'E-Commerce Store');
 define('SITE_URL', 'http://localhost/web-tech-hackathon-project/WebTech-Hackathon-Group-4/');
 define('BASE_PATH', dirname(__DIR__) . '/');
 define('UPLOAD_PATH', BASE_PATH . 'uploads/');
