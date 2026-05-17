@@ -98,7 +98,7 @@ if (isset($_GET['msg'])) {
                                 <td><?php echo $p['id']; ?></td>
                                 <td>
                                     <?php if($p['primary_image_path']): ?>
-                                        <img src="/WebTech/WebTech-Hackathon-Group-4/<?php echo $p['primary_image_path']; ?>" width="40">
+                                        <img src="../../public/<?php echo $p['primary_image_path']; ?>" width="50" height="50" style="object-fit:cover;">
                                     <?php else: ?>
                                         No img
                                     <?php endif; ?>
