@@ -1,9 +1,9 @@
 <?php
 // controllers/ReviewController.php
-require_once '../config/helpers.php';
-require_once '../config/db.php';
-require_once '../models/Review.php';
-require_once '../models/Order.php';
+require_once __DIR__ . '/../config/helpers.php';
+require_once __DIR__ . '/../config/db.php';
+require_once __DIR__ . '/../models/Review.php';
+require_once __DIR__ . '/../models/Order.php';
 
 class ReviewController {
     private $db;
@@ -11,8 +11,9 @@ class ReviewController {
     private $orderModel;
     
     public function __construct(){
-        $database = new Database();
-        $this->db = $database->getConnection();
+        // Fix: Use DatabaseConnection class instead of Database
+        $database = new DatabaseConnection();
+        $this->db = $database->openConnection();
         $this->reviewModel = new Review($this->db);
         $this->orderModel = new Order($this->db);
     }
@@ -45,8 +46,10 @@ class ReviewController {
                 exit();
             }
             
-            // Check if user purchased the product
-            if(!$this->orderModel->hasUserPurchasedProduct($user_id, $product_id)){
+            // Fix: Check if user purchased the product using existing method
+            // You need to add this method to Order model
+            $hasPurchased = $this->checkUserPurchasedProduct($user_id, $product_id);
+            if(!$hasPurchased){
                 $_SESSION['review_error'] = "You can only review products from delivered orders";
                 header("Location: ../views/customer/order-detail.php?id=" . $order_id);
                 exit();
@@ -68,6 +71,19 @@ class ReviewController {
             header("Location: ../views/customer/order-detail.php?id=" . $order_id);
             exit();
         }
+    }
+    
+    // Helper method to check if user purchased the product
+    private function checkUserPurchasedProduct($user_id, $product_id){
+        $sql = "SELECT o.id FROM orders o 
+                JOIN order_items oi ON o.id = oi.order_id 
+                WHERE o.user_id = ? AND oi.product_id = ? AND o.status = 'Delivered' 
+                LIMIT 1";
+        $stmt = $this->db->prepare($sql);
+        $stmt->bind_param("ii", $user_id, $product_id);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        return $result->num_rows > 0;
     }
 }
 

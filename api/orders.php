@@ -1,7 +1,7 @@
 <?php
 header('Content-Type: application/json');
-require_once '../config/db.php';
-require_once '../models/Order.php';
+require_once __DIR__ . '/../config/db.php';
+require_once __DIR__ . '/../models/Order.php';
 
 session_start();
 
@@ -11,8 +11,9 @@ if(!isset($_SESSION['user_id'])){
     exit();
 }
 
-$database = new Database();
-$connection = $database->openConnection();  // Fixed: use openConnection()
+// Create database connection using your existing class
+$database = new DatabaseConnection();
+$connection = $database->openConnection();
 $orderModel = new Order($connection);
 
 // GET - Fetch orders
@@ -67,7 +68,7 @@ if($_SERVER['REQUEST_METHOD'] === 'PUT' && isset($_GET['id'])){
     }
     
     if($orderModel->updateStatus($order_id, $status)){
-        echo json_encode(['ok' => true, 'status' => $status]);
+        echo json_encode(['success' => true, 'status' => $status]);
     } else {
         http_response_code(500);
         echo json_encode(['error' => 'Failed to update order status']);

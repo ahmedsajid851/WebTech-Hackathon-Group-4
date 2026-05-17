@@ -2,234 +2,159 @@
 // models/Order.php
 
 class Order {
-    private $conn;
+    /**
+     * @var mysqli $connection
+     */
+    private $connection;
     
-    public function __construct($connection){
-        $this->conn = $connection;
+    public function __construct($connection) {
+        $this->connection = $connection;
     }
     
-    // Create new order
-    public function createOrder($user_id, $shipping_address, $payment_method, $total_amount){
-        $sql = "INSERT INTO orders (user_id, shipping_address, payment_method, total_amount, status, created_at) 
-                VALUES (?, ?, ?, ?, 'Pending', NOW())";
-        
-        $statement = $this->conn->prepare($sql);
-        $statement->bind_param("issd", $user_id, $shipping_address, $payment_method, $total_amount);
-        
-        if($statement->execute()){
-            return $this->conn->insert_id;
-        }
-        return false;
-    }
-    
-    // Add order item
-    public function addOrderItem($order_id, $product_id, $quantity, $unit_price){
-        $sql = "INSERT INTO order_items (order_id, product_id, quantity, unit_price) 
-                VALUES (?, ?, ?, ?)";
-        
-        $statement = $this->conn->prepare($sql);
-        $statement->bind_param("iiid", $order_id, $product_id, $quantity, $unit_price);
-        
-        return $statement->execute();
-    }
-    
-    // Get user orders (customer)
-    public function getUserOrders($user_id){
-        $sql = "SELECT * FROM orders 
-                WHERE user_id = ? 
-                ORDER BY created_at DESC";
-        
-        $statement = $this->conn->prepare($sql);
-        $statement->bind_param("i", $user_id);
-        $statement->execute();
-        
-        $result = $statement->get_result();
-        $orders = [];
-        
-        while($row = $result->fetch_assoc()){
-            $orders[] = $row;
-        }
-        
-        return $orders;
-    }
-    
-    // Get all orders (admin)
-    public function getAllOrders(){
+    /**
+     * Get all orders with customer details
+     * @return array
+     */
+    public function getAllOrders() {
         $sql = "SELECT o.*, u.name as customer_name, u.email 
-                FROM orders o
+                FROM orders o 
                 JOIN users u ON o.user_id = u.id 
                 ORDER BY o.created_at DESC";
-        
-        $result = $this->conn->query($sql);
+        $result = $this->connection->query($sql);
         $orders = [];
         
-        while($row = $result->fetch_assoc()){
-            $orders[] = $row;
+        if ($result && $result->num_rows > 0) {
+            while($row = $result->fetch_assoc()) {
+                $orders[] = $row;
+            }
         }
-        
         return $orders;
     }
     
-    // Get order by ID (admin)
-    public function getOrderById($order_id){
-        $sql = "SELECT o.*, u.name as customer_name, u.email 
-                FROM orders o
-                JOIN users u ON o.user_id = u.id 
-                WHERE o.id = ?";
+    /**
+     * Get orders for specific user
+     * @param int $userId
+     * @return array
+     */
+    public function getUserOrders($userId) {
+        $stmt = $this->connection->prepare("SELECT * FROM orders WHERE user_id = ? ORDER BY created_at DESC");
+        $stmt->bind_param("i", $userId);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $orders = [];
         
-        $statement = $this->conn->prepare($sql);
-        $statement->bind_param("i", $order_id);
-        $statement->execute();
-        
-        $result = $statement->get_result();
-        return $result->fetch_assoc();
+        if ($result && $result->num_rows > 0) {
+            while($row = $result->fetch_assoc()) {
+                $orders[] = $row;
+            }
+        }
+        return $orders;
     }
     
-    // Get order by ID and user (customer)
-    public function getOrderByIdAndUser($order_id, $user_id){
-        $sql = "SELECT * FROM orders 
-                WHERE id = ? AND user_id = ?";
+    /**
+     * Get order by ID
+     * @param int $id
+     * @return array|null
+     */
+    public function getOrderById($id) {
+        $stmt = $this->connection->prepare("SELECT o.*, u.name as customer_name, u.email 
+                                            FROM orders o 
+                                            JOIN users u ON o.user_id = u.id 
+                                            WHERE o.id = ?");
+        $stmt->bind_param("i", $id);
+        $stmt->execute();
+        $result = $stmt->get_result();
         
-        $statement = $this->conn->prepare($sql);
-        $statement->bind_param("ii", $order_id, $user_id);
-        $statement->execute();
-        
-        $result = $statement->get_result();
-        return $result->fetch_assoc();
+        if ($result && $result->num_rows > 0) {
+            return $result->fetch_assoc();
+        }
+        return null;
     }
     
-    // Get order items
-    public function getOrderItems($order_id){
-        $sql = "SELECT oi.*, p.name, p.primary_image_path, p.price 
-                FROM order_items oi
-                JOIN products p ON oi.product_id = p.id 
-                WHERE oi.order_id = ?";
+    /**
+     * Get order by ID and user (for customers)
+     * @param int $orderId
+     * @param int $userId
+     * @return array|null
+     */
+    public function getOrderByIdAndUser($orderId, $userId) {
+        $stmt = $this->connection->prepare("SELECT * FROM orders WHERE id = ? AND user_id = ?");
+        $stmt->bind_param("ii", $orderId, $userId);
+        $stmt->execute();
+        $result = $stmt->get_result();
         
-        $statement = $this->conn->prepare($sql);
-        $statement->bind_param("i", $order_id);
-        $statement->execute();
-        
-        $result = $statement->get_result();
+        if ($result && $result->num_rows > 0) {
+            return $result->fetch_assoc();
+        }
+        return null;
+    }
+    
+    /**
+     * Get order items
+     * @param int $orderId
+     * @return array
+     */
+    public function getOrderItems($orderId) {
+        $stmt = $this->connection->prepare("SELECT oi.*, p.name as product_name, p.primary_image_path 
+                                            FROM order_items oi 
+                                            JOIN products p ON oi.product_id = p.id 
+                                            WHERE oi.order_id = ?");
+        $stmt->bind_param("i", $orderId);
+        $stmt->execute();
+        $result = $stmt->get_result();
         $items = [];
         
-        while($row = $result->fetch_assoc()){
-            $items[] = $row;
+        if ($result && $result->num_rows > 0) {
+            while($row = $result->fetch_assoc()) {
+                $items[] = $row;
+            }
         }
-        
         return $items;
     }
     
-    // Update order status
-    public function updateStatus($order_id, $status){
-        $sql = "UPDATE orders SET status = ? WHERE id = ?";
-        
-        $statement = $this->conn->prepare($sql);
-        $statement->bind_param("si", $status, $order_id);
-        
-        return $statement->execute();
+    /**
+     * Update order status
+     * @param int $id
+     * @param string $status
+     * @return bool
+     */
+    public function updateStatus($id, $status) {
+        $stmt = $this->connection->prepare("UPDATE orders SET status = ? WHERE id = ?");
+        $stmt->bind_param("si", $status, $id);
+        return $stmt->execute();
     }
     
-    // Check if user purchased a product (for reviews)
-    public function hasUserPurchasedProduct($user_id, $product_id){
-        $sql = "SELECT o.id FROM orders o
-                JOIN order_items oi ON o.id = oi.order_id
-                WHERE o.user_id = ? AND oi.product_id = ? AND o.status = 'Delivered'
-                LIMIT 1";
+    /**
+     * Create new order
+     * @param int $userId
+     * @param string $shippingAddress
+     * @param string $paymentMethod
+     * @param float $totalAmount
+     * @return int|bool
+     */
+    public function createOrder($userId, $shippingAddress, $paymentMethod, $totalAmount) {
+        $status = 'Pending';
+        $stmt = $this->connection->prepare("INSERT INTO orders (user_id, shipping_address, payment_method, total_amount, status) VALUES (?, ?, ?, ?, ?)");
+        $stmt->bind_param("issds", $userId, $shippingAddress, $paymentMethod, $totalAmount, $status);
         
-        $statement = $this->conn->prepare($sql);
-        $statement->bind_param("ii", $user_id, $product_id);
-        $statement->execute();
-        
-        $result = $statement->get_result();
-        return $result->num_rows > 0;
-    }
-    
-    // Get orders by status
-    public function getOrdersByStatus($status){
-        $sql = "SELECT o.*, u.name as customer_name, u.email 
-                FROM orders o
-                JOIN users u ON o.user_id = u.id 
-                WHERE o.status = ?
-                ORDER BY o.created_at DESC";
-        
-        $statement = $this->conn->prepare($sql);
-        $statement->bind_param("s", $status);
-        $statement->execute();
-        
-        $result = $statement->get_result();
-        $orders = [];
-        
-        while($row = $result->fetch_assoc()){
-            $orders[] = $row;
+        if($stmt->execute()) {
+            return $this->connection->insert_id;
         }
-        
-        return $orders;
-    }
-    
-    // Get orders by date range
-    public function getOrdersByDateRange($start_date, $end_date){
-        $sql = "SELECT o.*, u.name as customer_name, u.email 
-                FROM orders o
-                JOIN users u ON o.user_id = u.id 
-                WHERE DATE(o.created_at) BETWEEN ? AND ?
-                ORDER BY o.created_at DESC";
-        
-        $statement = $this->conn->prepare($sql);
-        $statement->bind_param("ss", $start_date, $end_date);
-        $statement->execute();
-        
-        $result = $statement->get_result();
-        $orders = [];
-        
-        while($row = $result->fetch_assoc()){
-            $orders[] = $row;
-        }
-        
-        return $orders;
-    }
-    
-    // Get order count by status
-    public function getOrderCountByStatus($status){
-        $sql = "SELECT COUNT(*) as count FROM orders WHERE status = ?";
-        
-        $statement = $this->conn->prepare($sql);
-        $statement->bind_param("s", $status);
-        $statement->execute();
-        
-        $result = $statement->get_result();
-        $row = $result->fetch_assoc();
-        
-        return $row['count'];
-    }
-    
-    // Get total sales
-    public function getTotalSales(){
-        $sql = "SELECT SUM(total_amount) as total FROM orders WHERE status != 'Cancelled'";
-        
-        $result = $this->conn->query($sql);
-        $row = $result->fetch_assoc();
-        
-        return $row['total'] ?? 0;
-    }
-    
-    // Cancel order
-    public function cancelOrder($order_id, $user_id){
-        // First check if order belongs to user and is pending
-        $sql = "SELECT status FROM orders WHERE id = ? AND user_id = ?";
-        $statement = $this->conn->prepare($sql);
-        $statement->bind_param("ii", $order_id, $user_id);
-        $statement->execute();
-        $result = $statement->get_result();
-        $order = $result->fetch_assoc();
-        
-        if($order && $order['status'] == 'Pending'){
-            $sql = "UPDATE orders SET status = 'Cancelled' WHERE id = ? AND user_id = ?";
-            $statement = $this->conn->prepare($sql);
-            $statement->bind_param("ii", $order_id, $user_id);
-            return $statement->execute();
-        }
-        
         return false;
+    }
+    
+    /**
+     * Add item to order
+     * @param int $orderId
+     * @param int $productId
+     * @param int $quantity
+     * @param float $unitPrice
+     * @return bool
+     */
+    public function addOrderItem($orderId, $productId, $quantity, $unitPrice) {
+        $stmt = $this->connection->prepare("INSERT INTO order_items (order_id, product_id, quantity, unit_price) VALUES (?, ?, ?, ?)");
+        $stmt->bind_param("iiid", $orderId, $productId, $quantity, $unitPrice);
+        return $stmt->execute();
     }
 }
 ?>

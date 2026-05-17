@@ -1,6 +1,6 @@
 <?php
 header('Content-Type: application/json');
-require_once '../config/db.php';
+require_once __DIR__ . '/../config/db.php';
 
 session_start();
 
@@ -9,7 +9,8 @@ if(!isset($_SESSION['user_id'])){
     exit();
 }
 
-$database = new Database();
+// Create database connection using your existing class
+$database = new DatabaseConnection();
 $conn = $database->openConnection();
 
 if($_SERVER['REQUEST_METHOD'] === 'POST'){
@@ -60,7 +61,7 @@ if($_SERVER['REQUEST_METHOD'] === 'POST'){
     $insert->bind_param("iiis", $product_id, $user_id, $rating, $review_text);
     
     if($insert->execute()){
-        echo json_encode(['ok' => true, 'message' => 'Review submitted successfully']);
+        echo json_encode(['success' => true, 'message' => 'Review submitted successfully']);
     } else {
         echo json_encode(['error' => 'Failed to submit review']);
     }
