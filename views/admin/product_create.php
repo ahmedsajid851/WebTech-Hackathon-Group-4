@@ -47,7 +47,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 if($_FILES['image']['size'] <= 3 * 1024 * 1024) {
                     $newName = time() . '_' . bin2hex(random_bytes(8)) . '.' . $ext;
                     $uploadPath = 'uploads/products/' . $newName;
-                    $fullPath = __DIR__ . '/../../public/' . $uploadPath;
+                    $fullPath = $_SERVER['DOCUMENT_ROOT'] . '/WebTech/WebTech-Hackathon-Group-4/public/' . $uploadPath;
                     
                     if(!is_dir(dirname($fullPath))) {
                         mkdir(dirname($fullPath), 0777, true);
@@ -98,13 +98,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <style>
         *{margin:0;padding:0;box-sizing:border-box;}
         body{font-family:Arial;background:#f0f0f0;}
-        .top-nav{background:#1a1a1a;color:white;padding:15px 20px;position:sticky;top:0;display:flex;justify-content:space-between;}
+        .top-nav{background:#1a1a1a;color:white;padding:15px 20px;position:sticky;top:0;display:flex;justify-content:space-between;align-items:center;}
+        .top-nav h2{font-size:18px;}
+        .user-info{display:flex;gap:15px;align-items:center;}
         .logout-btn{background:#d9534f;color:white;padding:5px 12px;text-decoration:none;border-radius:3px;}
+        .logout-btn:hover{background:#c9302c;}
         .sidebar{width:200px;background:#2c2c2c;position:sticky;top:52px;height:calc(100vh - 52px);}
         .sidebar a{color:#ddd;display:block;padding:12px 20px;text-decoration:none;border-bottom:1px solid #3a3a3a;}
         .sidebar a:hover{background:#3a3a3a;}
+        .sidebar a.active{background:#007bff;color:white;}
         .main-container{display:flex;}
         .content{flex:1;padding:20px;}
+        .header{display:flex;justify-content:space-between;margin-bottom:20px;}
         .form-box{background:white;padding:20px;border:1px solid #ddd;max-width:600px;}
         .form-group{margin-bottom:15px;}
         label{display:block;margin-bottom:5px;font-weight:bold;}
@@ -114,14 +119,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         .btn-secondary{background:#6c757d;}
         .error{background:#f2dede;padding:10px;margin-bottom:20px;color:#a94442;}
         .buttons{display:flex;gap:10px;}
-        .indent{margin-left:20px;}
     </style>
 </head>
 <body>
     <div class="top-nav">
         <h2>Admin Panel</h2>
-        <div>
+        <div class="user-info">
             <span><?php echo $_SESSION['name'] ?? 'Guest'; ?></span>
+            <span><?php echo $_SESSION['role'] ?? 'admin'; ?></span>
             <a href="../../views/auth/logout.php" class="logout-btn">Logout</a>
         </div>
     </div>
@@ -135,7 +140,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         </div>
         
         <div class="content">
-            <h2 style="margin-bottom:20px;">Create Product</h2>
+            <div class="header">
+                <h2>Create Product</h2>
+            </div>
             
             <?php if($error): ?><div class="error"><?php echo $error; ?></div><?php endif; ?>
             
