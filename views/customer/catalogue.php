@@ -137,7 +137,7 @@ if (isset($_SESSION["cart"])) {
                     <span>Welcome, <?php echo htmlspecialchars($_SESSION["name"]); ?></span>
                     <?php endif; ?>
                     <a href="../controllers/CartController.php">🛒 Cart <span id="cart-count"><?php echo $cartCount; ?></span></a>
-                    <a href="../views/customer/login.php">Login</a>
+                    <a href="../views/auth/login.php">Login</a>
                 
             </div>
         </div>

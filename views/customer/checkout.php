@@ -99,8 +99,8 @@ if (isset($_SESSION["cart"])){
         <div class="navbar">
             <span><strong>My E-commerce Store</strong></span>
         <div>
-            <?php if (isset($_SESSION["name"])): ?>
-                <span>Welcome, <?php echo htmlspecialchars($_SESSION["name"]); ?>!</span>
+            <?php if (isset($_SESSION["user_name"])): ?>
+                <span>Welcome, <?php echo htmlspecialchars($_SESSION["user_name"]); ?>!</span>
                 <?php endif; ?>
                 <a href="../controllers/ProductController.php">Home</a>
                 <a href="../controllers/CartController.php">🛒 Cart <span id="cart-count"><?php echo $cartCount > 0 ? "($cartCount)" : ""; ?></span></a>
