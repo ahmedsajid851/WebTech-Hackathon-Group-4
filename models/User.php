@@ -2,13 +2,23 @@
 require_once __DIR__ . '/../config/db.php';
 
 class User {
+    /**
+     * @var DatabaseConnection $db
+     */
     private $db;
     
     public function __construct() {
         $this->db = new DatabaseConnection();
     }
     
-    // Register new user
+    /**
+     * Register new user
+     * @param string $name
+     * @param string $email
+     * @param string $password
+     * @param string|null $phone
+     * @return array<string,mixed>
+     */
     public function register($name, $email, $password, $phone = null) {
         // Check if email already exists
         $existingUser = $this->findByEmail($email);
@@ -42,7 +52,12 @@ class User {
         }
     }
     
-    // Login user
+    /**
+     * Login user
+     * @param string $email
+     * @param string $password
+     * @return array<string,mixed>
+     */
     public function login($email, $password) {
         $result = $this->findByEmail($email);
         
@@ -66,17 +81,28 @@ class User {
         }
     }
     
-    // Find user by email
+    /**
+     * Find user by email
+     * @param string $email
+     * @return mysqli_result|bool
+     */
     public function findByEmail($email) {
         return $this->db->select('users', ['email' => $email]);
     }
     
-    // Find user by ID
+    /**
+     * Find user by ID
+     * @param int $id
+     * @return mysqli_result|bool
+     */
     public function findById($id) {
         return $this->db->select('users', ['id' => $id]);
     }
     
-    // Get all users
+    /**
+     * Get all users
+     * @return mysqli_result|bool
+     */
     public function getAllUsers() {
         $connection = $this->db->openConnection();
         $sql = "SELECT id, name, email, phone, role, created_at FROM users ORDER BY created_at DESC";
@@ -85,7 +111,13 @@ class User {
         return $result;
     }
     
-    // Update user profile
+    /**
+     * Update user profile
+     * @param int $userId
+     * @param string $name
+     * @param string|null $phone
+     * @return mysqli_result|bool
+     */
     public function updateProfile($userId, $name, $phone) {
         return $this->db->update('users', 
             ['name' => $name, 'phone' => $phone], 
@@ -93,23 +125,41 @@ class User {
         );
     }
     
-    // Update user role (admin only)
+    /**
+     * Update user role (admin only)
+     * @param int $userId
+     * @param string $role
+     * @return mysqli_result|bool
+     */
     public function updateRole($userId, $role) {
         return $this->db->update('users', ['role' => $role], ['id' => $userId]);
     }
     
-    // Delete user
+    /**
+     * Delete user
+     * @param int $userId
+     * @return mysqli_result|bool
+     */
     public function deleteUser($userId) {
         return $this->db->delete('users', ['id' => $userId]);
     }
     
-    // Logout
+    /**
+     * Logout
+     * @return array<string,mixed>
+     */
     public function logout() {
         session_destroy();
         return ["success" => true, "message" => "Logged out successfully"];
     }
     
-    // Change password
+    /**
+     * Change password
+     * @param int $userId
+     * @param string $oldPassword
+     * @param string $newPassword
+     * @return array<string,mixed>
+     */
     public function changePassword($userId, $oldPassword, $newPassword) {
         // Get user by ID
         $result = $this->findById($userId);
