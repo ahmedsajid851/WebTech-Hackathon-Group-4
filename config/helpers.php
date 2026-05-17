@@ -1,6 +1,4 @@
 <?php
-// config/helpers.php
-
 define('BASE_URL', 'http://localhost/WebTech-Hackathon-Group-4');
 
 function startSecureSession(){
