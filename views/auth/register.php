@@ -1,132 +1,179 @@
-<?php
+<?php 
+require_once __DIR__ . '/../../config/config.php';
 require_once __DIR__ . '/../../config/helpers.php';
-startSecureSession();
 
-// Redirect if already logged in
-if (isset($_SESSION['user_id'])) {
-    if ($_SESSION['role'] === 'admin') {
-        header('Location: ' . BASE_URL . '/views/admin/dashboard.php');
+// If already logged in, redirect to dashboard
+if(isLoggedIn()){
+    if(isAdmin()){
+        Header("Location: ../admin/dashboard.php");
     } else {
-        header('Location: ' . BASE_URL . '/views/dashboard.php');
+        Header("Location: ../dashboard.php");
     }
     exit();
 }
 
-$errors = $_SESSION['errors'] ?? [];
-$oldInput = $_SESSION['old_input'] ?? [];
-$success = $_SESSION['success'] ?? null;
+$nameError = $_SESSION["nameError"] ?? "";
+$emailError = $_SESSION["emailError"] ?? "";
+$passwordError = $_SESSION["passwordError"] ?? "";
+$confirmError = $_SESSION["confirmError"] ?? "";
+$registerError = $_SESSION["registerError"] ?? "";
 
-unset($_SESSION['errors']);
-unset($_SESSION['old_input']);
-unset($_SESSION['success']);
+$name = $_SESSION["name"] ?? "";
+$email = $_SESSION["email"] ?? "";
+$phone = $_SESSION["phone"] ?? "";
+
+// Clear session errors
+unset($_SESSION["nameError"]);
+unset($_SESSION["emailError"]);
+unset($_SESSION["passwordError"]);
+unset($_SESSION["confirmError"]);
+unset($_SESSION["registerError"]);
+unset($_SESSION["name"]);
+unset($_SESSION["email"]);
+unset($_SESSION["phone"]);
 ?>
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Register - E-Commerce Store</title>
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: Arial, sans-serif; background: #f4f4f4; min-height: 100vh; display: flex; justify-content: center; align-items: center; }
-        .container { background: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); width: 450px; }
-        h2 { margin-bottom: 20px; color: #333; text-align: center; }
-        .form-group { margin-bottom: 15px; }
-        label { display: block; margin-bottom: 5px; font-weight: bold; color: #555; }
-        input { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; }
-        .error { color: red; font-size: 12px; margin-top: 5px; }
-        .success { color: green; font-size: 14px; margin-bottom: 15px; text-align: center; }
-        button { width: 100%; padding: 12px; background: #28a745; color: white; border: none; border-radius: 4px; font-size: 16px; cursor: pointer; }
-        button:hover { background: #218838; }
-        .login-link { text-align: center; margin-top: 15px; }
-        .login-link a { color: #007bff; text-decoration: none; }
-    </style>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Register - <?php echo SITE_NAME; ?></title>
     <script>
         function checkEmail() {
             let email = document.getElementById("email").value;
-            let errorDiv = document.getElementById("emailError");
-            
-            if (!email) {
-                errorDiv.innerHTML = "";
-                return;
-            }
-            
             let xhttp = new XMLHttpRequest();
+            
             xhttp.onreadystatechange = function() {
+                let errorDiv = document.getElementById("emailError");
                 if (this.readyState == 4 && this.status == 200) {
                     let response = JSON.parse(this.responseText);
-                    if (!response.available) {
+                    if (response.available === false) {
                         errorDiv.innerHTML = response.message;
                         errorDiv.style.color = "red";
-                    } else {
+                    } else if (response.available === true) {
                         errorDiv.innerHTML = response.message;
                         errorDiv.style.color = "green";
                     }
                 }
             };
-            xhttp.open("POST", "<?php echo BASE_URL; ?>/api/auth.php?action=checkEmail", true);
-            xhttp.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
+            
+            xhttp.open("POST", "../../api/auth.php?action=checkEmail", true);
+            xhttp.setRequestHeader("content-type", "application/x-www-form-urlencoded");
             xhttp.send("email=" + encodeURIComponent(email));
         }
     </script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: #f0f0f0;
+        }
+        .container {
+            max-width: 450px;
+            margin: 30px auto;
+            background: white;
+            padding: 20px;
+            border: 1px solid #ddd;
+        }
+        h2 {
+            margin-top: 0;
+            color: #333;
+        }
+        input {
+            width: 100%;
+            padding: 8px;
+            margin: 5px 0 10px 0;
+            border: 1px solid #ddd;
+            box-sizing: border-box;
+        }
+        button {
+            background: #333;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            cursor: pointer;
+            width: 100%;
+        }
+        button:hover {
+            background: #555;
+        }
+        .error {
+            color: red;
+            font-size: 13px;
+            margin: -5px 0 10px 0;
+        }
+        .login-link {
+            margin-top: 15px;
+            text-align: center;
+        }
+        .login-link a {
+            color: #333;
+        }
+        label {
+            font-weight: bold;
+        }
+        hr {
+            margin: 20px 0;
+            border: none;
+            border-top: 1px solid #ddd;
+        }
+    </style>
 </head>
 <body>
     <div class="container">
         <h2>Create Account</h2>
         
-        <?php if ($success): ?>
-            <div class="success"><?php echo htmlspecialchars($success); ?></div>
+        <?php if($registerError): ?>
+            <div class="error" style="margin-bottom:15px;"><?php echo $registerError; ?></div>
         <?php endif; ?>
         
-        <!-- FIXED: Changed form action to relative path -->
-        <form method="POST" action="../../controllers/AuthController.php?action=register">
-            <div class="form-group">
-                <label>Full Name *</label>
-                <input type="text" name="name" value="<?php echo htmlspecialchars($oldInput['name'] ?? ''); ?>" required>
-                <?php if (isset($errors['name'])): ?>
-                    <div class="error"><?php echo $errors['name']; ?></div>
+        <form method="post" action="../../controllers/AuthController.php?action=register">
+            <div>
+                <label>Full Name:</label><br/>
+                <input type="text" name="name" placeholder="Enter full name" value="<?php echo htmlspecialchars($name); ?>" required/>
+                <?php if($nameError): ?>
+                    <div class="error"><?php echo $nameError; ?></div>
                 <?php endif; ?>
             </div>
             
-            <div class="form-group">
-                <label>Email *</label>
-                <input type="email" id="email" name="email" value="<?php echo htmlspecialchars($oldInput['email'] ?? ''); ?>" onkeyup="checkEmail()" required>
+            <div>
+                <label>Email:</label><br/>
+                <input type="email" id="email" name="email" placeholder="Enter email" value="<?php echo htmlspecialchars($email); ?>" onkeyup="checkEmail()" required/>
+                <?php if($emailError): ?>
+                    <div class="error"><?php echo $emailError; ?></div>
+                <?php endif; ?>
                 <div id="emailError" class="error"></div>
-                <?php if (isset($errors['email'])): ?>
-                    <div class="error"><?php echo $errors['email']; ?></div>
+            </div>
+            
+            <div>
+                <label>Phone (Optional):</label><br/>
+                <input type="text" name="phone" placeholder="Enter phone number" value="<?php echo htmlspecialchars($phone); ?>"/>
+            </div>
+            
+            <div>
+                <label>Password:</label><br/>
+                <input type="password" name="password" placeholder="Enter password (min 6 characters)" required/>
+                <?php if($passwordError): ?>
+                    <div class="error"><?php echo $passwordError; ?></div>
                 <?php endif; ?>
             </div>
             
-            <div class="form-group">
-                <label>Phone (Optional)</label>
-                <input type="tel" name="phone" value="<?php echo htmlspecialchars($oldInput['phone'] ?? ''); ?>">
-                <?php if (isset($errors['phone'])): ?>
-                    <div class="error"><?php echo $errors['phone']; ?></div>
-                <?php endif; ?>
-            </div>
-            
-            <div class="form-group">
-                <label>Password * (min 8 characters)</label>
-                <input type="password" name="password" required>
-                <?php if (isset($errors['password'])): ?>
-                    <div class="error"><?php echo $errors['password']; ?></div>
-                <?php endif; ?>
-            </div>
-            
-            <!-- FIXED: Added confirm password field -->
-            <div class="form-group">
-                <label>Confirm Password *</label>
-                <input type="password" name="confirm_password" required>
-                <?php if (isset($errors['confirm_password'])): ?>
-                    <div class="error"><?php echo $errors['confirm_password']; ?></div>
+            <div>
+                <label>Confirm Password:</label><br/>
+                <input type="password" name="confirm_password" placeholder="Confirm password" required/>
+                <?php if($confirmError): ?>
+                    <div class="error"><?php echo $confirmError; ?></div>
                 <?php endif; ?>
             </div>
             
             <button type="submit">Register</button>
+            
+            <div class="login-link">
+                Already have an account? <a href="login.php">Login here</a>
+            </div>
         </form>
-        
-        <div class="login-link">
-            Already have an account? <a href="<?php echo BASE_URL; ?>/views/auth/login.php">Login here</a>
-        </div>
     </div>
 </body>
 </html>

@@ -1,222 +1,175 @@
 <?php
-// controllers/AuthController.php
-require_once __DIR__ . '/../config/db.php';
 require_once __DIR__ . '/../models/User.php';
-
-session_start();
+require_once __DIR__ . '/../config/helpers.php';
 
 class AuthController {
+    /**
+     * @var User $userModel
+     */
     private $userModel;
     
-    public function __construct(){
-        $database = new Database();
-        $connection = $database->openConnection();
-        $this->userModel = new User($connection);
+    public function __construct() {
+        $this->userModel = new User();
     }
     
-    // Handle login
-    public function login(){
-        if($_SERVER['REQUEST_METHOD'] === 'POST'){
-            $email = trim($_POST['email'] ?? '');
-            $password = $_POST['password'] ?? '';
-            $remember_me = isset($_POST['remember_me']) ? true : false;
+    // Handle registration
+    public function register() {
+        if ($_SERVER["REQUEST_METHOD"] === "POST") {
+            $name = sanitize($_POST["name"] ?? "");
+            $email = sanitize($_POST["email"] ?? "");
+            $password = $_POST["password"] ?? "";
+            $confirmPassword = $_POST["confirm_password"] ?? "";
+            $phone = sanitize($_POST["phone"] ?? "");
             
-            $errors = [];
+            // Validation
+            $hasError = false;
             
-            // Validate email
-            if(empty($email)){
-                $errors['email'] = "Email is required";
-            } elseif(!filter_var($email, FILTER_VALIDATE_EMAIL)){
-                $errors['email'] = "Please enter a valid email address";
+            if (empty($name)) {
+                $_SESSION["nameError"] = "Name is required";
+                $hasError = true;
+            } else {
+                unset($_SESSION["nameError"]);
             }
             
-            // Validate password
-            if(empty($password)){
-                $errors['password'] = "Password is required";
+            if (empty($email)) {
+                $_SESSION["emailError"] = "Email is required";
+                $hasError = true;
+            } elseif (!validateEmail($email)) {
+                $_SESSION["emailError"] = "Invalid email format";
+                $hasError = true;
+            } else {
+                unset($_SESSION["emailError"]);
             }
             
-            if(!empty($errors)){
-                $_SESSION['errors'] = $errors;
-                $_SESSION['old_input'] = ['email' => $email];
-                header("Location: ../views/auth/login.php");
+            if (empty($password)) {
+                $_SESSION["passwordError"] = "Password is required";
+                $hasError = true;
+            } elseif (strlen($password) < 6) {
+                $_SESSION["passwordError"] = "Password must be at least 6 characters";
+                $hasError = true;
+            } else {
+                unset($_SESSION["passwordError"]);
+            }
+            
+            if ($password !== $confirmPassword) {
+                $_SESSION["confirmError"] = "Passwords do not match";
+                $hasError = true;
+            } else {
+                unset($_SESSION["confirmError"]);
+            }
+            
+            if ($hasError) {
+                $_SESSION["name"] = $name;
+                $_SESSION["email"] = $email;
+                $_SESSION["phone"] = $phone;
+                header("Location: ../views/auth/register.php");
                 exit();
             }
             
-            // Authenticate user
-            $user = $this->userModel->authenticate($email, $password);
+            // Register user
+            $result = $this->userModel->register($name, $email, $password, $phone);
             
-            if($user){
-                // Set session variables
-                $_SESSION['user_id'] = $user['id'];
-                $_SESSION['name'] = $user['name'];
-                $_SESSION['email'] = $user['email'];
-                $_SESSION['role'] = $user['role'];
-                $_SESSION['isLoggedIn'] = true;
-                
-                // Handle Remember Me
-                if($remember_me){
-                    $token = bin2hex(random_bytes(32));
-                    $this->userModel->setRememberToken($user['id'], $token);
-                    setcookie('remember_token', $token, time() + (86400 * 30), '/');
-                }
-                
-                // FIXED: Redirect to correct dashboard paths
-                if($user['role'] === 'admin'){
-                    header("Location: ../views/admin/dashboard.php");
-                } else {
-                    // Changed from customer/dashboard.php to dashboard.php
-                    header("Location: ../views/dashboard.php");
-                }
+            if ($result["success"]) {
+                $_SESSION["flash_success"] = $result["message"];
+                header("Location: ../views/auth/login.php");
                 exit();
             } else {
-                $_SESSION['error'] = "Invalid email or password";
-                $_SESSION['old_input'] = ['email' => $email];
-                header("Location: ../views/auth/login.php");
+                $_SESSION["registerError"] = $result["message"];
+                $_SESSION["name"] = $name;
+                $_SESSION["email"] = $email;
+                $_SESSION["phone"] = $phone;
+                header("Location: ../views/auth/register.php");
                 exit();
             }
         }
     }
     
-    // Handle registration
-    public function register(){
-        if($_SERVER['REQUEST_METHOD'] === 'POST'){
-            $name = trim($_POST['name'] ?? '');
-            $email = trim($_POST['email'] ?? '');
-            $phone = trim($_POST['phone'] ?? '');
-            $password = $_POST['password'] ?? '';
-            $confirm_password = $_POST['confirm_password'] ?? '';
+    // Handle login
+    public function login() {
+        if ($_SERVER["REQUEST_METHOD"] === "POST") {
+            $email = sanitize($_POST["email"] ?? "");
+            $password = $_POST["password"] ?? "";
             
-            $errors = [];
+            // Validation
+            $hasError = false;
             
-            // Validate name
-            if(empty($name)){
-                $errors['name'] = "Name is required";
-            } elseif(strlen($name) < 2){
-                $errors['name'] = "Name must be at least 2 characters";
+            if (empty($email)) {
+                $_SESSION["emailError"] = "Email is required";
+                $hasError = true;
+            } else {
+                unset($_SESSION["emailError"]);
             }
             
-            // Validate email
-            if(empty($email)){
-                $errors['email'] = "Email is required";
-            } elseif(!filter_var($email, FILTER_VALIDATE_EMAIL)){
-                $errors['email'] = "Please enter a valid email address";
-            } elseif($this->userModel->emailExists($email)){
-                $errors['email'] = "Email already registered";
+            if (empty($password)) {
+                $_SESSION["passwordError"] = "Password is required";
+                $hasError = true;
+            } else {
+                unset($_SESSION["passwordError"]);
             }
             
-            // Validate password
-            if(empty($password)){
-                $errors['password'] = "Password is required";
-            } elseif(strlen($password) < 8){
-                $errors['password'] = "Password must be at least 8 characters";
-            }
-            
-            // Validate confirm password
-            if($password !== $confirm_password){
-                $errors['confirm_password'] = "Passwords do not match";
-            }
-            
-            if(!empty($errors)){
-                $_SESSION['errors'] = $errors;
-                $_SESSION['old_input'] = [
-                    'name' => $name,
-                    'email' => $email,
-                    'phone' => $phone
-                ];
-                header("Location: ../views/auth/register.php");
-                exit();
-            }
-            
-            // Create user
-            $hashed_password = password_hash($password, PASSWORD_DEFAULT);
-            $user_id = $this->userModel->createUser($name, $email, $hashed_password, $phone);
-            
-            if($user_id){
-                $_SESSION['success'] = "Registration successful! Please login.";
+            if ($hasError) {
+                $_SESSION["email"] = $email;
                 header("Location: ../views/auth/login.php");
                 exit();
-            } else {
-                $_SESSION['error'] = "Registration failed. Please try again.";
-                header("Location: ../views/auth/register.php");
-                exit();
             }
+            
+            // Login user
+            $result = $this->userModel->login($email, $password);
+            
+            if ($result["success"]) {
+                $_SESSION["flash_success"] = $result["message"];
+                if ($result["role"] === "admin") {
+                    header("Location: ../views/admin/dashboard.php");
+                } else {
+                    header("Location: ../views/dashboard.php");
+                }
+            } else {
+                $_SESSION["loginError"] = $result["message"];
+                $_SESSION["email"] = $email;
+                header("Location: ../views/auth/login.php");
+            }
+            exit();
         }
     }
     
     // Handle logout
-    public function logout(){
-        // Clear remember me token from database
-        if(isset($_SESSION['user_id'])){
-            $this->userModel->setRememberToken($_SESSION['user_id'], null);
-        }
-        
-        // Clear remember me cookie
-        if(isset($_COOKIE['remember_token'])){
-            setcookie('remember_token', '', time() - 3600, '/');
-        }
-        
-        // Clear all session variables
-        $_SESSION = array();
-        
-        // Destroy session cookie
-        if(isset($_COOKIE[session_name()])){
-            setcookie(session_name(), '', time() - 3600, '/');
-        }
-        
-        // Destroy session
+    public function logout() {
+        // Destroy all session data
         session_destroy();
         
+        // Clear session cookie
+        if (ini_get("session.use_cookies")) {
+            $params = session_get_cookie_params();
+            setcookie(session_name(), '', time() - 42000,
+                $params["path"], $params["domain"],
+                $params["secure"], $params["httponly"]
+            );
+        }
+        
+        // Redirect to login page
         header("Location: ../views/auth/login.php");
         exit();
     }
-    
-    // Check remember me cookie
-    public function checkRememberMe(){
-        if(isset($_COOKIE['remember_token'])){
-            $token = $_COOKIE['remember_token'];
-            $user = $this->userModel->getUserByRememberToken($token);
-            
-            if($user){
-                $_SESSION['user_id'] = $user['id'];
-                $_SESSION['name'] = $user['name'];
-                $_SESSION['email'] = $user['email'];
-                $_SESSION['role'] = $user['role'];
-                $_SESSION['isLoggedIn'] = true;
-                
-                if($user['role'] === 'admin'){
-                    header("Location: ../views/admin/dashboard.php");
-                } else {
-                    // Changed from customer/dashboard.php to dashboard.php
-                    header("Location: ../views/dashboard.php");
-                }
-                exit();
-            }
-        }
-    }
 }
 
-// Route handling
-$controller = new AuthController();
-
-if(isset($_GET['action'])){
-    switch($_GET['action']){
-        case 'login':
-            $controller->login();
-            break;
+// Route handling for direct script access
+if (basename($_SERVER['SCRIPT_FILENAME']) == 'AuthController.php') {
+    $action = $_GET['action'] ?? '';
+    $auth = new AuthController();
+    
+    switch ($action) {
         case 'register':
-            $controller->register();
+            $auth->register();
+            break;
+        case 'login':
+            $auth->login();
             break;
         case 'logout':
-            $controller->logout();
-            break;
-        case 'check_remember':
-            $controller->checkRememberMe();
+            $auth->logout();
             break;
         default:
             header("Location: ../views/auth/login.php");
-            break;
+            exit();
     }
-} else {
-    header("Location: ../views/auth/login.php");
 }
 ?>
