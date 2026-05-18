@@ -10,7 +10,6 @@ if(!isset($_SESSION['user_id'])){
     exit();
 }
 
-// ========== FIXED: Use Database class instead of DatabaseConnection ==========
 require_once __DIR__ . '/../../config/db.php';
 require_once __DIR__ . '/../../models/Order.php';
 
@@ -56,11 +55,12 @@ $database->closeConnection($connection);
         .rating { margin: 10px 0; }
         .rating input { margin-right: 5px; }
         .rating label { margin-right: 15px; cursor: pointer; font-size: 20px; }
-        textarea { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 3px; margin: 10px 0; font-family: Arial; }
+        textarea { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 3px; margin: 10px 0; font-family: Arial; resize: vertical; }
         .submit-review { background: #28a745; color: white; border: none; padding: 8px 15px; cursor: pointer; border-radius: 3px; }
         .submit-review:hover { background: #218838; }
         .success-msg { background: #d4edda; color: #155724; padding: 10px; border-radius: 3px; margin-bottom: 10px; }
         .error-msg { background: #f8d7da; color: #721c24; padding: 10px; border-radius: 3px; margin-bottom: 10px; }
+        .loading-msg { background: #cce5ff; color: #004085; padding: 10px; border-radius: 3px; margin-bottom: 10px; }
         .btn { display: inline-block; background: #007bff; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; margin-top: 15px; }
         .btn:hover { background: #0056b3; }
     </style>
@@ -175,7 +175,8 @@ $database->closeConnection($connection);
                                 resultDiv.innerHTML = '<div class="error-msg">❌ ' + response.error + '</div>';
                             }
                         } catch(e) {
-                            resultDiv.innerHTML = '<div class="error-msg">❌ Error parsing response</div>';
+                            console.log("Parse error:", e);
+                            resultDiv.innerHTML = '<div class="error-msg">❌ Error parsing response. Please try again.</div>';
                         }
                     } else if(this.status == 403){
                         resultDiv.innerHTML = '<div class="error-msg">❌ You can only review products from delivered orders</div>';
@@ -186,6 +187,11 @@ $database->closeConnection($connection);
                     }
                 }
             };
+            
+            xhttp.onerror = function() {
+                resultDiv.innerHTML = '<div class="error-msg">❌ Network error - could not connect to server</div>';
+            };
+            
             xhttp.open("POST", "../../api/reviews.php", true);
             xhttp.send(formData);
         }
@@ -203,7 +209,7 @@ $database->closeConnection($connection);
             </div>
             <div>
                 <a href="../dashboard.php"> Dashboard</a>
-                <a href="catalogue.php"> Products</a>
+                <a href="catalogue.php">🛒 Products</a>
                 <a href="cart.php"> Cart</a>
                 <a href="../../controllers/AuthController.php?action=logout"> Logout</a>
             </div>
@@ -212,7 +218,7 @@ $database->closeConnection($connection);
         <?php if(empty($orders)): ?>
             <div class="no-orders">
                 <p>You haven't placed any orders yet.</p>
-                <a href="catalogue.php" class="btn"> Start Shopping</a>
+                <a href="catalogue.php" class="btn">🛒 Start Shopping</a>
             </div>
         <?php else: ?>
             <?php foreach($orders as $order): ?>
