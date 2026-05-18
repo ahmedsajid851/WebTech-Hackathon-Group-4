@@ -123,7 +123,7 @@ $database->closeConnection($connection);
             <?php if(isset($_SESSION["name"])): ?>
                 <span>Welcome, <?php echo htmlspecialchars($_SESSION["name"]); ?></span>
             <?php endif; ?>
-            <a href="cart.php">🛒 Cart (<span id="cart-count"><?php echo $cartCount; ?></span>)</a>
+            <a href="cart.php"> Cart (<span id="cart-count"><?php echo $cartCount; ?></span>)</a>
             <a href="../dashboard.php">Dashboard</a>
             <a href="../../controllers/AuthController.php?action=logout">Logout</a>
         </div>
