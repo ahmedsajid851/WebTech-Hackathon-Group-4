@@ -37,7 +37,6 @@ $database->closeConnection($connection);
     <meta charset="UTF-8">
     <title>Customer Dashboard</title>
     <style>
-        /* Simple beginner CSS */
         body {
             font-family: Arial, sans-serif;
             margin: 0;
@@ -45,7 +44,6 @@ $database->closeConnection($connection);
             background-color: #f0f0f0;
         }
         
-        /* Navbar */
         .navbar {
             background-color: #333;
             color: white;
@@ -64,14 +62,12 @@ $database->closeConnection($connection);
             text-decoration: underline;
         }
         
-        /* Container */
         .container {
             max-width: 1000px;
             margin: 30px auto;
             padding: 0 20px;
         }
         
-        /* Welcome Card */
         .welcome-card {
             background-color: white;
             padding: 20px;
@@ -87,7 +83,6 @@ $database->closeConnection($connection);
             border-radius: 5px;
         }
         
-        /* Profile Card */
         .profile-card {
             background-color: white;
             padding: 20px;
@@ -96,7 +91,6 @@ $database->closeConnection($connection);
             display: none;
         }
         
-        /* Buttons */
         .btn {
             display: inline-block;
             background-color: #007bff;
@@ -123,7 +117,6 @@ $database->closeConnection($connection);
             opacity: 0.8;
         }
         
-        /* Form */
         .form-group {
             margin-bottom: 15px;
         }
@@ -150,7 +143,6 @@ $database->closeConnection($connection);
             box-sizing: border-box;
         }
         
-        /* Address Items */
         .address-item {
             background-color: #f8f9fa;
             padding: 10px;
@@ -164,9 +156,9 @@ $database->closeConnection($connection);
         .remove-address {
             color: red;
             text-decoration: none;
+            cursor: pointer;
         }
         
-        /* Messages */
         .success {
             color: green;
             padding: 10px;
@@ -181,7 +173,6 @@ $database->closeConnection($connection);
             margin-top: 5px;
         }
         
-        /* Tabs */
         .tabs {
             display: flex;
             gap: 10px;
@@ -214,6 +205,12 @@ $database->closeConnection($connection);
         h1, h2, h3 {
             margin-bottom: 15px;
         }
+        
+        .address-form-container {
+            margin-top: 20px;
+            padding-top: 15px;
+            border-top: 1px solid #ddd;
+        }
     </style>
 </head>
 <body>
@@ -229,18 +226,16 @@ $database->closeConnection($connection);
 </div>
 
 <div class="container">
-    <!-- Welcome Card -->
     <div class="welcome-card">
         <h1>Welcome, <?php echo htmlspecialchars($username); ?>!</h1>
         <p>Email: <?php echo htmlspecialchars($userEmail); ?></p>
         <div class="info">
             <p>You are logged in as a <strong>Customer</strong></p>
-            <button onclick="showProfile()" class="btn"> My Profile</button>
-            <a href="customer/catalogue.php" class="btn"> Browse Products</a>
+            <button onclick="showProfile()" class="btn">My Profile</button>
+            <a href="customer/catalogue.php" class="btn">Browse Products</a>
         </div>
     </div>
 
-    <!-- Profile Section -->
     <div id="profileSection" class="profile-card">
         <h2>My Profile</h2>
         
@@ -252,7 +247,6 @@ $database->closeConnection($connection);
             <button class="tab-btn" onclick="showTab('password')">Change Password</button>
         </div>
         
-        <!-- Personal Info Tab -->
         <div id="infoTab" class="profile-section active">
             <div class="form-group">
                 <label>Full Name</label>
@@ -269,31 +263,32 @@ $database->closeConnection($connection);
             <button onclick="updateProfile()" class="btn btn-success">Update Profile</button>
         </div>
         
-        <!-- Shipping Addresses Tab -->
         <div id="addressTab" class="profile-section">
             <h3>Saved Addresses</h3>
             <div id="addressesList">
+                <?php $addressCount = 0; ?>
                 <?php foreach($savedAddresses as $index => $addr): ?>
-                    <div class="address-item">
+                    <div class="address-item" data-id="<?php echo $addr; ?>">
                         <span><?php echo htmlspecialchars($addr); ?></span>
-                        <a href="#" onclick="removeAddress(<?php echo $index; ?>); return false;" class="remove-address">Remove</a>
+                        <a href="#" onclick="removeAddress('<?php echo addslashes($addr); ?>'); return false;" class="remove-address">Remove</a>
                     </div>
+                    <?php $addressCount++; ?>
                 <?php endforeach; ?>
-                <?php if(count($savedAddresses) >= 2): ?>
-                    <p style="color:red;">Maximum 2 addresses allowed</p>
-                <?php endif; ?>
             </div>
             
-            <?php if(count($savedAddresses) < 2): ?>
+            <div id="maxAddressMsg" style="color:red; display: <?php echo $addressCount >= 2 ? 'block' : 'none'; ?>;">
+                Maximum 2 addresses allowed
+            </div>
+            
+            <div id="addressFormContainer" class="address-form-container" style="display: <?php echo $addressCount < 2 ? 'block' : 'none'; ?>;">
                 <h3>Add New Address</h3>
                 <div class="form-group">
                     <textarea id="new_address" rows="2" placeholder="Enter new shipping address"></textarea>
                 </div>
                 <button onclick="addAddress()" class="btn btn-success">Add Address</button>
-            <?php endif; ?>
+            </div>
         </div>
         
-        <!-- Change Password Tab -->
         <div id="passwordTab" class="profile-section">
             <div class="form-group">
                 <label>Current Password</label>
@@ -386,8 +381,25 @@ $database->closeConnection($connection);
             if(xhr.readyState == 4 && xhr.status == 200){
                 var response = JSON.parse(xhr.responseText);
                 if(response.success){
+                    var addressesList = document.getElementById("addressesList");
+                    var newAddressDiv = document.createElement("div");
+                    newAddressDiv.className = "address-item";
+                    newAddressDiv.setAttribute("data-id", address);
+                    newAddressDiv.innerHTML = '<span>' + escapeHtml(address) + '</span><a href="#" onclick="removeAddress(\'' + escapeHtml(address) + '\'); return false;" class="remove-address">Remove</a>';
+                    addressesList.appendChild(newAddressDiv);
+                    
+                    document.getElementById("new_address").value = "";
+                    
+                    var addressCount = document.querySelectorAll(".address-item").length;
+                    var maxMsg = document.getElementById("maxAddressMsg");
+                    var formContainer = document.getElementById("addressFormContainer");
+                    
+                    if(addressCount >= 2){
+                        if(formContainer) formContainer.style.display = "none";
+                        if(maxMsg) maxMsg.style.display = "block";
+                    }
+                    
                     showMessage("Address added successfully!", "success");
-                    location.reload();
                 } else {
                     showMessage(response.error, "error");
                 }
@@ -396,7 +408,7 @@ $database->closeConnection($connection);
         xhr.send("address=" + encodeURIComponent(address));
     }
     
-    function removeAddress(index) {
+    function removeAddress(address) {
         if(confirm("Remove this address?")){
             var xhr = new XMLHttpRequest();
             xhr.open("POST", "../controllers/ProfileController.php?action=removeAddress", true);
@@ -405,14 +417,27 @@ $database->closeConnection($connection);
                 if(xhr.readyState == 4 && xhr.status == 200){
                     var response = JSON.parse(xhr.responseText);
                     if(response.success){
+                        var addressItem = document.querySelector('.address-item[data-id="' + address.replace(/"/g, '\\"') + '"]');
+                        if(addressItem){
+                            addressItem.remove();
+                        }
+                        
+                        var addressCount = document.querySelectorAll(".address-item").length;
+                        var maxMsg = document.getElementById("maxAddressMsg");
+                        var formContainer = document.getElementById("addressFormContainer");
+                        
+                        if(addressCount < 2){
+                            if(formContainer) formContainer.style.display = "block";
+                            if(maxMsg) maxMsg.style.display = "none";
+                        }
+                        
                         showMessage("Address removed successfully!", "success");
-                        location.reload();
                     } else {
                         showMessage(response.error, "error");
                     }
                 }
             };
-            xhr.send("index=" + index);
+            xhr.send("address=" + encodeURIComponent(address));
         }
     }
     
@@ -453,6 +478,12 @@ $database->closeConnection($connection);
             }
         };
         xhr.send("current_password=" + encodeURIComponent(current) + "&new_password=" + encodeURIComponent(newPass));
+    }
+    
+    function escapeHtml(text) {
+        var div = document.createElement("div");
+        div.textContent = text;
+        return div.innerHTML;
     }
 </script>
 
