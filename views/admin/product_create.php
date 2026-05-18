@@ -1,191 +1,234 @@
 <?php
-// views/admin/product_create.php
+// views/admin/products.php
 
-require_once __DIR__ . '/../../config/db.php';
-require_once __DIR__ . '/../../models/Product.php';
-require_once __DIR__ . '/../../models/Category.php';
-
-if (session_status() === PHP_SESSION_NONE) {
+if(session_status() == PHP_SESSION_NONE) {
     session_start();
 }
 
-if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'admin') {
-    die("Access Denied");
+if(!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin'){
+    header("Location: ../auth/login.php");
+    exit();
 }
 
-$database = new DatabaseConnection();
+require_once __DIR__ . '/../../config/db.php';
+
+$database = new Database();
 $connection = $database->openConnection();
 
-$productModel = new Product($connection);
-$categoryModel = new Category($connection);
-$categories = $categoryModel->getCategoryTreeWithLevel();
-$error = '';
+// Fetch all products with category names
+$products = [];
+$sql = "SELECT p.*, c.name as category_name 
+        FROM products p 
+        LEFT JOIN categories c ON p.category_id = c.id 
+        ORDER BY p.created_at DESC";
+$result = $connection->query($sql);
+if($result){
+    while($row = $result->fetch_assoc()){
+        $products[] = $row;
+    }
+}
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $name = trim($_POST['name'] ?? '');
-    $description = trim($_POST['description'] ?? '');
-    $price = floatval($_POST['price'] ?? 0);
-    $stock_qty = intval($_POST['stock_qty'] ?? 0);
-    $category_id = intval($_POST['category_id'] ?? 0);
-    
-    if(empty($name)) {
-        $error = 'Product name required';
-    } elseif($price <= 0) {
-        $error = 'Price must be positive';
-    } elseif($stock_qty < 0) {
-        $error = 'Stock quantity cannot be negative';
-    } elseif($category_id <= 0) {
-        $error = 'Category required';
+// Fetch categories for filter
+$categories = [];
+$catResult = $connection->query("SELECT id, name FROM categories ORDER BY name");
+if($catResult){
+    while($row = $catResult->fetch_assoc()){
+        $categories[] = $row;
+    }
+}
+
+// Get average ratings for all products at once
+$ratings = [];
+$ratingSql = "SELECT product_id, AVG(rating) as avg_rating FROM reviews GROUP BY product_id";
+$ratingResult = $connection->query($ratingSql);
+if($ratingResult){
+    while($row = $ratingResult->fetch_assoc()){
+        $ratings[$row['product_id']] = round($row['avg_rating'], 1);
+    }
+}
+
+$database->closeConnection($connection);
+
+// Function to get stock badge class
+function getStockBadgeClass($stock) {
+    if($stock <= 0){
+        return 'badge-danger';
+    } elseif($stock <= 5){
+        return 'badge-warning';
     } else {
-        $imagePath = '';
-        if(isset($_FILES['image']) && $_FILES['image']['error'] == 0) {
-            $allowed = ['jpg', 'jpeg', 'png'];
-            $filename = $_FILES['image']['name'];
-            $ext = strtolower(pathinfo($filename, PATHINFO_EXTENSION));
-            
-            if(in_array($ext, $allowed)) {
-                if($_FILES['image']['size'] <= 3 * 1024 * 1024) {
-                    $newName = time() . '_' . bin2hex(random_bytes(8)) . '.' . $ext;
-                    $uploadPath = 'uploads/products/' . $newName;
-                    $fullPath = $_SERVER['DOCUMENT_ROOT'] . '/WebTech/WebTech-Hackathon-Group-4/public/' . $uploadPath;
-                    
-                    if(!is_dir(dirname($fullPath))) {
-                        mkdir(dirname($fullPath), 0777, true);
-                    }
-                    
-                    if(move_uploaded_file($_FILES['image']['tmp_name'], $fullPath)) {
-                        $imagePath = $uploadPath;
-                    } else {
-                        $error = 'Failed to upload image';
-                    }
-                } else {
-                    $error = 'Image too large (max 3MB)';
-                }
-            } else {
-                $error = 'Only JPG, JPEG, PNG allowed';
-            }
-        } else {
-            $error = 'Product image required';
-        }
-        
-        if(empty($error)) {
-            $data = [
-                'name' => $name,
-                'description' => $description,
-                'price' => $price,
-                'stock_qty' => $stock_qty,
-                'category_id' => $category_id,
-                'primary_image_path' => $imagePath,
-                'is_available' => 1
-            ];
-            
-            $result = $productModel->create($data);
-            if($result) {
-                header("Location: products.php?msg=created");
-                exit();
-            } else {
-                $error = 'Failed to create product';
-            }
-        }
+        return 'badge-success';
+    }
+}
+
+function getStockText($stock) {
+    if($stock <= 0){
+        return 'Out of Stock';
+    } elseif($stock <= 5){
+        return 'Low Stock (' . $stock . ')';
+    } else {
+        return 'In Stock (' . $stock . ')';
+    }
+}
+
+function getAvailabilityBadge($is_available) {
+    if($is_available == 1){
+        return '<span class="badge badge-success">In Stock</span>';
+    } else {
+        return '<span class="badge badge-danger">Out of Stock</span>';
     }
 }
 ?>
 
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Create Product</title>
+    <meta charset="UTF-8">
+    <title>Admin - Product Management</title>
     <style>
-        *{margin:0;padding:0;box-sizing:border-box;}
-        body{font-family:Arial;background:#f0f0f0;}
-        .top-nav{background:#1a1a1a;color:white;padding:15px 20px;position:sticky;top:0;display:flex;justify-content:space-between;align-items:center;}
-        .top-nav h2{font-size:18px;}
-        .user-info{display:flex;gap:15px;align-items:center;}
-        .logout-btn{background:#d9534f;color:white;padding:5px 12px;text-decoration:none;border-radius:3px;}
-        .logout-btn:hover{background:#c9302c;}
-        .sidebar{width:200px;background:#2c2c2c;position:sticky;top:52px;height:calc(100vh - 52px);}
-        .sidebar a{color:#ddd;display:block;padding:12px 20px;text-decoration:none;border-bottom:1px solid #3a3a3a;}
-        .sidebar a:hover{background:#3a3a3a;}
-        .sidebar a.active{background:#007bff;color:white;}
-        .main-container{display:flex;}
-        .content{flex:1;padding:20px;}
-        .header{display:flex;justify-content:space-between;margin-bottom:20px;}
-        .form-box{background:white;padding:20px;border:1px solid #ddd;max-width:600px;}
-        .form-group{margin-bottom:15px;}
-        label{display:block;margin-bottom:5px;font-weight:bold;}
-        input,select,textarea{width:100%;padding:8px;border:1px solid #ddd;border-radius:3px;}
-        textarea{height:100px;}
-        .btn{padding:8px 15px;background:#007bff;color:white;border:none;cursor:pointer;border-radius:3px;}
-        .btn-secondary{background:#6c757d;}
-        .error{background:#f2dede;padding:10px;margin-bottom:20px;color:#a94442;}
-        .buttons{display:flex;gap:10px;}
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: Arial, sans-serif; background: #f4f4f4; padding: 20px; }
+        .container { max-width: 1400px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; }
+        h1 { color: #333; margin-bottom: 20px; }
+        .nav { margin-bottom: 20px; padding: 10px; background: #333; border-radius: 5px; }
+        .nav a { color: white; text-decoration: none; margin-right: 15px; padding: 5px 10px; }
+        .nav a:hover { background: #555; border-radius: 3px; }
+        .btn-add { background: #28a745; color: white; padding: 10px 15px; text-decoration: none; border-radius: 3px; display: inline-block; margin-bottom: 20px; }
+        .btn-add:hover { background: #218838; }
+        .filter-box { background: #f9f9f9; padding: 15px; margin-bottom: 20px; border-radius: 5px; }
+        .filter-box input, .filter-box select { padding: 8px; margin-right: 10px; }
+        button { padding: 8px 15px; background: #007bff; color: white; border: none; cursor: pointer; border-radius: 3px; }
+        button:hover { background: #0056b3; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { border: 1px solid #ddd; padding: 12px; text-align: left; }
+        th { background: #007bff; color: white; }
+        tr:hover { background: #f5f5f5; }
+        .badge { display: inline-block; padding: 5px 10px; border-radius: 3px; font-size: 12px; font-weight: bold; }
+        .badge-warning { background: #ffc107; color: #000; }
+        .badge-success { background: #28a745; color: white; }
+        .badge-danger { background: #dc3545; color: white; }
+        .badge-info { background: #17a2b8; color: white; }
+        .action-buttons a { margin-right: 5px; padding: 5px 10px; text-decoration: none; border-radius: 3px; font-size: 12px; display: inline-block; }
+        .btn-edit { background: #007bff; color: white; }
+        .btn-edit:hover { background: #0056b3; }
+        .btn-delete { background: #dc3545; color: white; }
+        .btn-delete:hover { background: #c82333; }
+        .stock-row-low { background-color: #fff3cd !important; }
+        .product-img { width: 50px; height: 50px; object-fit: cover; border-radius: 4px; }
     </style>
+    <script>
+        function filterProducts(){
+            var search = document.getElementById("searchInput").value.toLowerCase();
+            var category = document.getElementById("categoryFilter").value;
+            var rows = document.getElementsByClassName("product-row");
+            
+            for(var i = 0; i < rows.length; i++){
+                var row = rows[i];
+                var productName = row.getAttribute("data-name").toLowerCase();
+                var productCategory = row.getAttribute("data-category");
+                
+                var searchMatch = (search === "" || productName.indexOf(search) > -1);
+                var categoryMatch = (category === "" || productCategory === category);
+                
+                row.style.display = (searchMatch && categoryMatch) ? "" : "none";
+            }
+        }
+        
+        function resetFilters(){
+            document.getElementById("searchInput").value = "";
+            document.getElementById("categoryFilter").value = "";
+            filterProducts();
+        }
+    </script>
 </head>
 <body>
-    <div class="top-nav">
-        <h2>Admin Panel</h2>
-        <div class="user-info">
-            <span><?php echo $_SESSION['name'] ?? 'Guest'; ?></span>
-            <span><?php echo $_SESSION['role'] ?? 'admin'; ?></span>
-            <a href="../../views/auth/logout.php" class="logout-btn">Logout</a>
-        </div>
-    </div>
-    
-    <div class="main-container">
-        <div class="sidebar">
+    <div class="container">
+        <h1>Admin - Product Management</h1>
+        <div class="nav">
             <a href="dashboard.php">Dashboard</a>
             <a href="categories.php">Categories</a>
             <a href="products.php">Products</a>
             <a href="orders.php">Orders</a>
+            <a href="../../controllers/AuthController.php?action=logout">Logout</a>
         </div>
         
-        <div class="content">
-            <div class="header">
-                <h2>Create Product</h2>
-            </div>
+        <a href="product_create.php" class="btn-add">+ Add New Product</a>
+        
+        <div class="filter-box">
+            <h3>Filter Products</h3>
+            <label>Search:</label>
+            <input type="text" id="searchInput" placeholder="Product name..." onkeyup="filterProducts()">
             
-            <?php if($error): ?><div class="error"><?php echo $error; ?></div><?php endif; ?>
+            <label>Category:</label>
+            <select id="categoryFilter" onchange="filterProducts()">
+                <option value="">All Categories</option>
+                <?php foreach($categories as $cat): ?>
+                    <option value="<?php echo $cat['id']; ?>"><?php echo htmlspecialchars($cat['name']); ?></option>
+                <?php endforeach; ?>
+            </select>
             
-            <div class="form-box">
-                <form method="POST" enctype="multipart/form-data">
-                    <div class="form-group">
-                        <label>Name</label>
-                        <input type="text" name="name" required>
-                    </div>
-                    <div class="form-group">
-                        <label>Description</label>
-                        <textarea name="description" required></textarea>
-                    </div>
-                    <div class="form-group">
-                        <label>Price</label>
-                        <input type="number" step="0.01" name="price" required>
-                    </div>
-                    <div class="form-group">
-                        <label>Stock Quantity</label>
-                        <input type="number" name="stock_qty" required>
-                    </div>
-                    <div class="form-group">
-                        <label>Category</label>
-                        <select name="category_id" required>
-                            <option value="">Select Category</option>
-                            <?php foreach($categories as $cat): ?>
-                                <option value="<?php echo $cat['id']; ?>">
-                                    <?php echo str_repeat('--', $cat['level']) . ' ' . htmlspecialchars($cat['name']); ?>
-                                </option>
-                            <?php endforeach; ?>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label>Product Image (JPEG/PNG, max 3MB)</label>
-                        <input type="file" name="image" accept="image/jpeg,image/png" required>
-                    </div>
-                    <div class="buttons">
-                        <button type="submit" class="btn">Create</button>
-                        <a href="products.php" class="btn btn-secondary">Cancel</a>
-                    </div>
-                </form>
-            </div>
+            <button onclick="resetFilters()">Reset Filters</button>
         </div>
+        
+        <?php if(empty($products)): ?>
+            <p>No products found. <a href="product_create.php">Add your first product</a></p>
+        <?php else: ?>
+            <div style="overflow-x: auto;">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Image</th>
+                            <th>Name</th>
+                            <th>Category</th>
+                            <th>Price</th>
+                            <th>Stock</th>
+                            <th>Availability</th>
+                            <th>Avg Rating</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php foreach($products as $product): ?>
+                            <tr class="product-row <?php echo ($product['stock_qty'] <= 5 && $product['stock_qty'] > 0) ? 'stock-row-low' : ''; ?>" 
+                                data-name="<?php echo htmlspecialchars($product['name']); ?>"
+                                data-category="<?php echo $product['category_id']; ?>">
+                                <td><?php echo $product['id']; ?></td>
+                                <td>
+                                    <?php if(!empty($product['primary_image_path']) && file_exists(__DIR__ . '/../../' . $product['primary_image_path'])): ?>
+                                        <img src="/WebTech-Hackathon-Group-4/<?php echo $product['primary_image_path']; ?>" class="product-img" alt="<?php echo htmlspecialchars($product['name']); ?>">
+                                    <?php else: ?>
+                                        <img src="https://via.placeholder.com/50" class="product-img" alt="No Image">
+                                    <?php endif; ?>
+                                </td>
+                                <td><?php echo htmlspecialchars($product['name']); ?></td>
+                                <td><?php echo htmlspecialchars($product['category_name'] ?? 'Uncategorized'); ?></td>
+                                <td>$<?php echo number_format($product['price'], 2); ?></td>
+                                <td>
+                                    <span class="badge <?php echo getStockBadgeClass($product['stock_qty']); ?>">
+                                        <?php echo getStockText($product['stock_qty']); ?>
+                                    </span>
+                                </td>
+                                <td>
+                                    <?php echo getAvailabilityBadge($product['is_available']); ?>
+                                </td>
+                                <td>
+                                    <?php 
+                                    $avgRating = $ratings[$product['id']] ?? 0;
+                                    echo $avgRating > 0 ? $avgRating . ' ★' : 'No reviews';
+                                    ?>
+                                </td>
+                                <td>
+                                    <div class="action-buttons">
+                                        <a href="product_edit.php?id=<?php echo $product['id']; ?>" class="btn-edit">Edit</a>
+                                        <a href="product_delete.php?id=<?php echo $product['id']; ?>" class="btn-delete" onclick="return confirm('Are you sure you want to delete this product?')">Delete</a>
+                                    </div>
+                                </td>
+                            </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+            </div>
+        <?php endif; ?>
     </div>
 </body>
 </html>

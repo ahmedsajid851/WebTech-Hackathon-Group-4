@@ -1,125 +1,230 @@
 <?php
 // views/admin/category_create.php
 
-require_once __DIR__ . '/../../config/config.php';
+if(session_status() == PHP_SESSION_NONE) {
+    session_start();
+}
+
+if(!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin'){
+    header("Location: ../auth/login.php");
+    exit();
+}
+
 require_once __DIR__ . '/../../config/db.php';
-require_once __DIR__ . '/../../models/Category.php';
-require_once __DIR__ . '/../../config/helpers.php';
 
-// Check if user is logged in and is admin
-if(!isLoggedIn()){
-    redirect("views/auth/login.php");
-    exit();
+$database = new Database();
+$connection = $database->openConnection();
+
+// Fetch parent categories for dropdown
+$parentCategories = [];
+$sql = "SELECT id, name FROM categories WHERE parent_id IS NULL ORDER BY name";
+$result = $connection->query($sql);
+if($result){
+    while($row = $result->fetch_assoc()){
+        $parentCategories[] = $row;
+    }
 }
 
-if(!isAdmin()){
-    redirect("views/dashboard.php");
-    exit();
-}
-
-// Create database connection
-$db = new DatabaseConnection();
-$connection = $db->openConnection();
-
-$categoryModel = new Category($connection);
-$parentCategories = $categoryModel->getCategoryTree();
 $error = '';
+$success = '';
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+if($_SERVER['REQUEST_METHOD'] === 'POST'){
     $name = trim($_POST['name'] ?? '');
-    $parent_id = !empty($_POST['parent_id']) ? $_POST['parent_id'] : null;
+    $parent_id = !empty($_POST['parent_id']) ? intval($_POST['parent_id']) : null;
     
-    if (empty($name)) {
-        $error = 'Category name is required';
+    if(empty($name)){
+        $error = "Category name is required";
     } else {
-        if ($categoryModel->create($name, $parent_id)) {
-            header("Location: categories.php?msg=created");
-            exit();
+        $checkSql = "SELECT id FROM categories WHERE name = ?";
+        $checkStmt = $connection->prepare($checkSql);
+        $checkStmt->bind_param("s", $name);
+        $checkStmt->execute();
+        $checkResult = $checkStmt->get_result();
+        
+        if($checkResult->num_rows > 0){
+            $error = "Category with this name already exists";
         } else {
-            $error = 'Failed to create category';
+            if($parent_id){
+                $insertSql = "INSERT INTO categories (name, parent_id) VALUES (?, ?)";
+                $insertStmt = $connection->prepare($insertSql);
+                $insertStmt->bind_param("si", $name, $parent_id);
+            } else {
+                $insertSql = "INSERT INTO categories (name) VALUES (?)";
+                $insertStmt = $connection->prepare($insertSql);
+                $insertStmt->bind_param("s", $name);
+            }
+            
+            if($insertStmt->execute()){
+                $success = "Category created successfully!";
+                $_POST = [];
+            } else {
+                $error = "Failed to create category: " . $connection->error;
+            }
         }
     }
 }
 
-$adminName = $_SESSION["user_name"] ?? "";
+$database->closeConnection($connection);
 ?>
 
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Create Category - <?php echo SITE_NAME; ?></title>
+    <meta charset="UTF-8">
+    <title>Create Category</title>
     <style>
-        *{margin:0;padding:0;box-sizing:border-box;}
-        body{font-family:Arial;background:#f0f0f0;}
-        .top-nav{background:#2c3e50;color:white;padding:15px 20px;position:sticky;top:0;display:flex;justify-content:space-between;}
-        .logout-btn{background:#d9534f;color:white;padding:5px 12px;text-decoration:none;border-radius:3px;}
-        .sidebar{width:200px;background:#34495e;position:sticky;top:52px;height:calc(100vh - 52px);}
-        .sidebar a{color:#ddd;display:block;padding:12px 20px;text-decoration:none;border-bottom:1px solid #3a3a3a;}
-        .sidebar a:hover{background:#3a3a3a;}
-        .main-container{display:flex;}
-        .content{flex:1;padding:20px;}
-        .form-box{background:white;padding:20px;border:1px solid #ddd;max-width:500px;border-radius:5px;}
-        .form-group{margin-bottom:15px;}
-        label{display:block;margin-bottom:5px;font-weight:bold;}
-        input,select{width:100%;padding:8px;border:1px solid #ddd;border-radius:3px;}
-        .btn{padding:8px 15px;background:#007bff;color:white;border:none;cursor:pointer;border-radius:3px;text-decoration:none;display:inline-block;}
-        .btn-secondary{background:#6c757d;}
-        .error{background:#f2dede;padding:10px;margin-bottom:20px;color:#a94442;border-radius:3px;}
-        .buttons{display:flex;gap:10px;}
-        h2{margin-bottom:20px;color:#333;}
+        /* Beginner CSS - Simple and Clean */
+        body {
+            font-family: Arial, Helvetica, sans-serif;
+            background-color: #f0f0f0;
+            margin: 0;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: white;
+            border: 1px solid #ddd;
+            padding: 20px;
+        }
+        
+        h1 {
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 24px;
+        }
+        
+        /* Navigation Links */
+        .nav {
+            background-color: #333;
+            padding: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .nav a {
+            color: white;
+            text-decoration: none;
+            margin-right: 15px;
+            padding: 5px 10px;
+        }
+        
+        .nav a:hover {
+            background-color: #555;
+        }
+        
+        /* Form Groups */
+        .form-group {
+            margin-bottom: 15px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        
+        input[type="text"], select {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        
+        /* Buttons */
+        .btn-submit {
+            background-color: #28a745;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        
+        .btn-submit:hover {
+            background-color: #218838;
+        }
+        
+        .btn-cancel {
+            background-color: #6c757d;
+            color: white;
+            padding: 10px 20px;
+            text-decoration: none;
+            border-radius: 4px;
+            display: inline-block;
+            margin-left: 10px;
+        }
+        
+        .btn-cancel:hover {
+            background-color: #5a6268;
+        }
+        
+        /* Messages */
+        .error {
+            background-color: #f8d7da;
+            color: #721c24;
+            padding: 10px;
+            border-radius: 4px;
+            margin-bottom: 15px;
+            border: 1px solid #f5c6cb;
+        }
+        
+        .success {
+            background-color: #d4edda;
+            color: #155724;
+            padding: 10px;
+            border-radius: 4px;
+            margin-bottom: 15px;
+            border: 1px solid #c3e6cb;
+        }
     </style>
 </head>
 <body>
-    <div class="top-nav">
-        <h2><?php echo SITE_NAME; ?> - Admin Panel</h2>
-        <div>
-            <span><?php echo htmlspecialchars($adminName); ?></span>
-            <a href="../../controllers/AuthController.php?action=logout" class="logout-btn">Logout</a>
-        </div>
+
+<div class="container">
+    <h1>Create Category</h1>
+    
+    <div class="nav">
+        <a href="dashboard.php">Dashboard</a>
+        <a href="categories.php">Categories</a>
+        <a href="products.php">Products</a>
+        <a href="orders.php">Orders</a>
+        <a href="../../controllers/AuthController.php?action=logout">Logout</a>
     </div>
     
-    <div class="main-container">
-        <div class="sidebar">
-            <a href="dashboard.php">Dashboard</a>
-            <a href="categories.php">Categories</a>
-            <a href="products.php">Products</a>
-            <a href="orders.php">Orders</a>
+    <?php if($error): ?>
+        <div class="error"><?php echo $error; ?></div>
+    <?php endif; ?>
+    
+    <?php if($success): ?>
+        <div class="success"><?php echo $success; ?></div>
+    <?php endif; ?>
+    
+    <form method="POST">
+        <div class="form-group">
+            <label>Category Name *</label>
+            <input type="text" name="name" value="<?php echo htmlspecialchars($_POST['name'] ?? ''); ?>" required>
         </div>
         
-        <div class="content">
-            <h2>Create Category</h2>
-            
-            <?php if($error): ?>
-                <div class="error"><?php echo $error; ?></div>
-            <?php endif; ?>
-            
-            <div class="form-box">
-                <form method="POST">
-                    <div class="form-group">
-                        <label>Category Name</label>
-                        <input type="text" name="name" required>
-                    </div>
-                    <div class="form-group">
-                        <label>Parent Category</label>
-                        <select name="parent_id">
-                            <option value="">None (Top Level)</option>
-                            <?php if(!empty($parentCategories)): ?>
-                                <?php foreach($parentCategories as $parent): ?>
-                                    <option value="<?php echo $parent['id']; ?>">
-                                        <?php echo str_repeat('--', $parent['level'] ?? 0); ?>
-                                        <?php echo htmlspecialchars($parent['name']); ?>
-                                    </option>
-                                <?php endforeach; ?>
-                            <?php endif; ?>
-                        </select>
-                    </div>
-                    <div class="buttons">
-                        <button type="submit" class="btn">Create Category</button>
-                        <a href="categories.php" class="btn btn-secondary">Cancel</a>
-                    </div>
-                </form>
-            </div>
+        <div class="form-group">
+            <label>Parent Category (Optional)</label>
+            <select name="parent_id">
+                <option value="">-- None (Top Level) --</option>
+                <?php foreach($parentCategories as $cat): ?>
+                    <option value="<?php echo $cat['id']; ?>" <?php echo (isset($_POST['parent_id']) && $_POST['parent_id'] == $cat['id']) ? 'selected' : ''; ?>>
+                        <?php echo htmlspecialchars($cat['name']); ?>
+                    </option>
+                <?php endforeach; ?>
+            </select>
         </div>
-    </div>
+        
+        <div>
+            <button type="submit" class="btn-submit">Create Category</button>
+            <a href="categories.php" class="btn-cancel">Cancel</a>
+        </div>
+    </form>
+</div>
+
 </body>
 </html>

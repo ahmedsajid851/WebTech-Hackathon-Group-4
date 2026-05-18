@@ -1,148 +1,274 @@
 <?php
 // views/admin/products.php
 
-require_once __DIR__ . '/../../config/db.php';
-require_once __DIR__ . '/../../models/Product.php';
-require_once __DIR__ . '/../../models/Category.php';
-
-if (session_status() === PHP_SESSION_NONE) {
+if(session_status() == PHP_SESSION_NONE) {
     session_start();
 }
 
-if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'admin') {
-    die("Access Denied");
+if(!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin'){
+    header("Location: ../auth/login.php");
+    exit();
 }
 
-$database = new DatabaseConnection();
+// ========== FIXED: Use Database class instead of DatabaseConnection ==========
+require_once __DIR__ . '/../../config/db.php';
+
+$database = new Database();
 $connection = $database->openConnection();
 
-$productModel = new Product($connection);
-$categoryModel = new Category($connection);
-$products = $productModel->getAll();
-$categories = $categoryModel->getCategoryTreeWithLevel();
+// Fetch all products with category names
+$products = [];
+$sql = "SELECT p.*, c.name as category_name 
+        FROM products p 
+        LEFT JOIN categories c ON p.category_id = c.id 
+        ORDER BY p.created_at DESC";
+$result = $connection->query($sql);
+if($result){
+    while($row = $result->fetch_assoc()){
+        $products[] = $row;
+    }
+}
 
-$message = '';
-if (isset($_GET['msg'])) {
-    if ($_GET['msg'] == 'created') $message = "Product created.";
-    elseif ($_GET['msg'] == 'updated') $message = "Product updated.";
-    elseif ($_GET['msg'] == 'deleted') $message = "Product deleted.";
+// Fetch categories for filter
+$categories = [];
+$catResult = $connection->query("SELECT id, name FROM categories ORDER BY name");
+if($catResult){
+    while($row = $catResult->fetch_assoc()){
+        $categories[] = $row;
+    }
+}
+
+// Get average ratings for all products at once
+$ratings = [];
+$ratingSql = "SELECT product_id, AVG(rating) as avg_rating FROM reviews GROUP BY product_id";
+$ratingResult = $connection->query($ratingSql);
+if($ratingResult){
+    while($row = $ratingResult->fetch_assoc()){
+        $ratings[$row['product_id']] = round($row['avg_rating'], 1);
+    }
+}
+
+$database->closeConnection($connection);
+
+// Function to get stock badge class
+function getStockBadgeClass($stock) {
+    if($stock <= 0){
+        return 'badge-danger';
+    } elseif($stock <= 5){
+        return 'badge-warning';
+    } else {
+        return 'badge-success';
+    }
+}
+
+// Function to get stock text
+function getStockText($stock) {
+    if($stock <= 0){
+        return 'Out of Stock';
+    } elseif($stock <= 5){
+        return 'Low Stock (' . $stock . ')';
+    } else {
+        return 'In Stock (' . $stock . ')';
+    }
+}
+
+// Function to get availability badge
+function getAvailabilityBadge($is_available) {
+    if($is_available == 1){
+        return '<span class="badge badge-success">In Stock</span>';
+    } else {
+        return '<span class="badge badge-danger">Out of Stock</span>';
+    }
 }
 ?>
 
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Products</title>
+    <meta charset="UTF-8">
+    <title>Admin - Product Management</title>
     <style>
-        *{margin:0;padding:0;box-sizing:border-box;}
-        body{font-family:Arial;background:#f0f0f0;}
-        .top-nav{background:#1a1a1a;color:white;padding:15px 20px;position:sticky;top:0;display:flex;justify-content:space-between;}
-        .logout-btn{background:#d9534f;color:white;padding:5px 12px;text-decoration:none;border-radius:3px;}
-        .sidebar{width:200px;background:#2c2c2c;position:sticky;top:52px;height:calc(100vh - 52px);}
-        .sidebar a{color:#ddd;display:block;padding:12px 20px;text-decoration:none;border-bottom:1px solid #3a3a3a;}
-        .sidebar a:hover{background:#3a3a3a;}
-        .sidebar a.active{background:#007bff;color:white;}
-        .main-container{display:flex;}
-        .content{flex:1;padding:20px;}
-        .header{display:flex;justify-content:space-between;margin-bottom:20px;}
-        .btn{display:inline-block;padding:8px 15px;background:#007bff;color:white;text-decoration:none;border-radius:3px;}
-        .btn-danger{background:#d9534f;}
-        .btn-edit{background:#5bc0de;}
-        .message{background:#d9edf7;padding:10px;margin-bottom:20px;}
-        table{width:100%;background:white;border-collapse:collapse;}
-        th,td{padding:10px;text-align:left;border-bottom:1px solid #ddd;}
-        th{background:#f5f5f5;}
-        .actions{display:flex;gap:8px;}
-        .low-stock{background:#ffeb3b;}
-        .badge{display:inline-block;padding:3px 8px;border-radius:3px;font-size:12px;}
-        .badge-success{background:#5cb85c;color:white;}
-        .badge-danger{background:#d9534f;color:white;}
-        .toggle-btn{cursor:pointer;}
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: Arial, sans-serif; background: #f4f4f4; padding: 20px; }
+        .container { max-width: 1400px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; }
+        h1 { color: #333; margin-bottom: 20px; }
+        .nav { margin-bottom: 20px; padding: 10px; background: #333; border-radius: 5px; }
+        .nav a { color: white; text-decoration: none; margin-right: 15px; padding: 5px 10px; }
+        .nav a:hover { background: #555; border-radius: 3px; }
+        .btn-add { background: #28a745; color: white; padding: 10px 15px; text-decoration: none; border-radius: 3px; display: inline-block; margin-bottom: 20px; }
+        .btn-add:hover { background: #218838; }
+        .filter-box { background: #f9f9f9; padding: 15px; margin-bottom: 20px; border-radius: 5px; }
+        .filter-box input, .filter-box select { padding: 8px; margin-right: 10px; }
+        button { padding: 8px 15px; background: #007bff; color: white; border: none; cursor: pointer; border-radius: 3px; }
+        button:hover { background: #0056b3; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { border: 1px solid #ddd; padding: 12px; text-align: left; }
+        th { background: #007bff; color: white; }
+        tr:hover { background: #f5f5f5; }
+        .badge { display: inline-block; padding: 5px 10px; border-radius: 3px; font-size: 12px; font-weight: bold; }
+        .badge-warning { background: #ffc107; color: #000; }
+        .badge-success { background: #28a745; color: white; }
+        .badge-danger { background: #dc3545; color: white; }
+        .badge-info { background: #17a2b8; color: white; }
+        .action-buttons a { margin-right: 5px; padding: 5px 10px; text-decoration: none; border-radius: 3px; font-size: 12px; display: inline-block; }
+        .btn-edit { background: #007bff; color: white; }
+        .btn-edit:hover { background: #0056b3; }
+        .btn-delete { background: #dc3545; color: white; }
+        .btn-delete:hover { background: #c82333; }
+        .stock-row-low { background-color: #fff3cd !important; }
+        .message { padding: 10px; margin: 10px 0; border-radius: 3px; }
+        .success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .toggle-btn { cursor: pointer; }
     </style>
+    <script>
+        function toggleAvailability(productId, currentStatus, element) {
+            var newStatus = currentStatus == 1 ? 0 : 1;
+            
+            var xhttp = new XMLHttpRequest();
+            xhttp.onreadystatechange = function() {
+                if(this.readyState == 4 && this.status == 200){
+                    var response = JSON.parse(this.responseText);
+                    if(response.ok){
+                        if(newStatus == 1){
+                            element.innerHTML = '<span class="badge badge-success">In Stock</span>';
+                            element.setAttribute("onclick", "toggleAvailability(" + productId + ", 1, this)");
+                        } else {
+                            element.innerHTML = '<span class="badge badge-danger">Out of Stock</span>';
+                            element.setAttribute("onclick", "toggleAvailability(" + productId + ", 0, this)");
+                        }
+                        showMessage("Product availability updated!", "success");
+                    } else {
+                        showMessage("Failed to update availability", "error");
+                    }
+                }
+            };
+            xhttp.open("PATCH", "../../api/products.php?id=" + productId, true);
+            xhttp.setRequestHeader("Content-Type", "application/json");
+            xhttp.send(JSON.stringify({is_available: newStatus}));
+        }
+        
+        function filterProducts(){
+            var search = document.getElementById("searchInput").value.toLowerCase();
+            var category = document.getElementById("categoryFilter").value;
+            var rows = document.getElementsByClassName("product-row");
+            
+            for(var i = 0; i < rows.length; i++){
+                var row = rows[i];
+                var productName = row.getAttribute("data-name").toLowerCase();
+                var productCategory = row.getAttribute("data-category");
+                
+                var searchMatch = (search === "" || productName.indexOf(search) > -1);
+                var categoryMatch = (category === "" || productCategory === category);
+                
+                row.style.display = (searchMatch && categoryMatch) ? "" : "none";
+            }
+        }
+        
+        function resetFilters(){
+            document.getElementById("searchInput").value = "";
+            document.getElementById("categoryFilter").value = "";
+            filterProducts();
+        }
+        
+        function showMessage(msg, type){
+            var messageDiv = document.getElementById("message");
+            messageDiv.innerHTML = '<div class="message ' + type + '">' + msg + '</div>';
+            setTimeout(function(){
+                messageDiv.innerHTML = "";
+            }, 3000);
+        }
+    </script>
 </head>
 <body>
-    <div class="top-nav">
-        <h2>Admin Panel</h2>
-        <div>
-            <span><?php echo $_SESSION['name'] ?? 'Guest'; ?></span>
-            <a href="../../views/auth/logout.php" class="logout-btn">Logout</a>
-        </div>
-    </div>
-    
-    <div class="main-container">
-        <div class="sidebar">
+    <div class="container">
+        <h1>Admin - Product Management</h1>
+        <div class="nav">
             <a href="dashboard.php">Dashboard</a>
             <a href="categories.php">Categories</a>
-            <a href="products.php" class="active">Products</a>
+            <a href="products.php">Products</a>
             <a href="orders.php">Orders</a>
+            <a href="../../controllers/AuthController.php?action=logout">Logout</a>
         </div>
         
-        <div class="content">
-            <div class="header">
-                <h2>Products</h2>
-                <a href="product_create.php" class="btn">Add Product</a>
-            </div>
+        <div id="message"></div>
+        
+        <a href="product_create.php" class="btn-add">+ Add New Product</a>
+        
+        <div class="filter-box">
+            <h3>Filter Products</h3>
+            <label>Search:</label>
+            <input type="text" id="searchInput" placeholder="Product name..." onkeyup="filterProducts()">
             
-            <?php if($message): ?><div class="message"><?php echo $message; ?></div><?php endif; ?>
+            <label>Category:</label>
+            <select id="categoryFilter" onchange="filterProducts()">
+                <option value="">All Categories</option>
+                <?php foreach($categories as $cat): ?>
+                    <option value="<?php echo $cat['id']; ?>"><?php echo htmlspecialchars($cat['name']); ?></option>
+                <?php endforeach; ?>
+            </select>
             
-            <table>
-                <thead>
-                    <tr><th>ID</th><th>Image</th><th>Name</th><th>Category</th><th>Price</th><th>Stock</th><th>Avg Rating</th><th>Status</th><th>Actions</th></tr>
-                </thead>
-                <tbody>
-                    <?php if(empty($products)): ?>
-                        <tr><td colspan="9">No products</td></tr>
-                    <?php else: ?>
-                        <?php foreach($products as $p): ?>
-                            <tr class="<?php echo $p['stock_qty'] <= 5 ? 'low-stock' : ''; ?>">
-                                <td><?php echo $p['id']; ?></td>
+            <button onclick="resetFilters()">Reset Filters</button>
+        </div>
+        
+        <?php if(empty($products)): ?>
+            <p>No products found. <a href="product_create.php">Add your first product</a></p>
+        <?php else: ?>
+            <div style="overflow-x: auto;">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Image</th>
+                            <th>Name</th>
+                            <th>Category</th>
+                            <th>Price</th>
+                            <th>Stock</th>
+                            <th>Availability</th>
+                            <th>Avg Rating</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php foreach($products as $product): ?>
+                            <tr class="product-row <?php echo ($product['stock_qty'] <= 5 && $product['stock_qty'] > 0) ? 'stock-row-low' : ''; ?>" 
+                                data-name="<?php echo htmlspecialchars($product['name']); ?>"
+                                data-category="<?php echo $product['category_id']; ?>">
+                                <td><?php echo $product['id']; ?></td>
                                 <td>
-                                    <?php if($p['primary_image_path']): ?>
-                                        <img src="../../public/<?php echo $p['primary_image_path']; ?>" width="50" height="50" style="object-fit:cover;">
-                                    <?php else: ?>
-                                        No img
-                                    <?php endif; ?>
+                                    <img src="<?php echo htmlspecialchars($product['primary_image_path']); ?>" alt="<?php echo htmlspecialchars($product['name']); ?>" style="width: 50px; height: 50px; object-fit: cover;">
                                 </td>
-                                <td><?php echo htmlspecialchars($p['name']); ?></td>
-                                <td><?php echo htmlspecialchars($p['category_name'] ?? '-'); ?></td>
-                                <td>$<?php echo number_format($p['price'], 2); ?></td>
-                                <td><?php echo $p['stock_qty']; ?></td>
-                                <td><?php echo round($p['avg_rating'], 1); ?> / 5</td>
+                                <td><?php echo htmlspecialchars($product['name']); ?></td>
+                                <td><?php echo htmlspecialchars($product['category_name'] ?? 'Uncategorized'); ?></td>
+                                <td>$<?php echo number_format($product['price'], 2); ?></td>
                                 <td>
-                                    <span class="badge <?php echo $p['is_available'] ? 'badge-success' : 'badge-danger-toggle'; ?>" data-id="<?php echo $p['id']; ?>" style="cursor:pointer;">
-                                        <?php echo $p['is_available'] ? 'In Stock' : 'Out of Stock'; ?>
+                                    <span class="badge <?php echo getStockBadgeClass($product['stock_qty']); ?>">
+                                        <?php echo getStockText($product['stock_qty']); ?>
                                     </span>
                                 </td>
-                                <td class="actions">
-                                    <a href="product_edit.php?id=<?php echo $p['id']; ?>" class="btn btn-edit" style="padding:4px 10px;">Edit</a>
-                                    <a href="product_delete.php?id=<?php echo $p['id']; ?>" class="btn btn-danger" style="padding:4px 10px;" onclick="return confirm('Delete this product?')">Delete</a>
+                                <td>
+                                    <span class="toggle-btn" onclick="toggleAvailability(<?php echo $product['id']; ?>, <?php echo $product['is_available']; ?>, this)">
+                                        <?php echo getAvailabilityBadge($product['is_available']); ?>
+                                    </span>
+                                </td>
+                                <td>
+                                    <?php 
+                                    $avgRating = $ratings[$product['id']] ?? 0;
+                                    echo $avgRating > 0 ? $avgRating . ' ★' : 'No reviews';
+                                    ?>
+                                </td>
+                                <td>
+                                    <div class="action-buttons">
+                                        <a href="product_edit.php?id=<?php echo $product['id']; ?>" class="btn-edit">Edit</a>
+                                        <a href="product_delete.php?id=<?php echo $product['id']; ?>" class="btn-delete" onclick="return confirm('Are you sure you want to delete this product?')">Delete</a>
+                                    </div>
                                 </td>
                             </tr>
                         <?php endforeach; ?>
-                    <?php endif; ?>
-                </tbody>
-            </table>
-        </div>
+                    </tbody>
+                </table>
+            </div>
+        <?php endif; ?>
     </div>
-    
-    <script>
-        document.querySelectorAll('.badge-success, .badge-danger-toggle').forEach(badge => {
-            badge.addEventListener('click', async function() {
-                const id = this.dataset.id;
-                const response = await fetch('/WebTech/WebTech-Hackathon-Group-4/api/products/toggle.php', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({id: id})
-                });
-                const data = await response.json();
-                if(data.success) {
-                    this.textContent = data.is_available ? 'In Stock' : 'Out of Stock';
-                    this.className = 'badge ' + (data.is_available ? 'badge-success' : 'badge-danger');
-                } else {
-                    alert('Failed to update status');
-                }
-            });
-        });
-    </script>
 </body>
 </html>

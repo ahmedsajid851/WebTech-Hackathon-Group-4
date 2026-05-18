@@ -1,18 +1,20 @@
 <?php
 // views/customer/my-orders.php
-session_start();
 
-// Check if logged in
+if(session_status() == PHP_SESSION_NONE) {
+    session_start();
+}
+
 if(!isset($_SESSION['user_id'])){
     header("Location: ../auth/login.php");
     exit();
 }
 
+// ========== FIXED: Use Database class instead of DatabaseConnection ==========
 require_once __DIR__ . '/../../config/db.php';
 require_once __DIR__ . '/../../models/Order.php';
 
-// Fix: Use DatabaseConnection class instead of Database
-$database = new DatabaseConnection();
+$database = new Database();
 $connection = $database->openConnection();
 $orderModel = new Order($connection);
 
@@ -26,16 +28,16 @@ $database->closeConnection($connection);
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>My Orders - E-Commerce Store</title>
+    <title>My Orders</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: Arial, sans-serif; background: #f0f0f0; }
-        .header { background: #2c3e50; color: white; padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; }
-        .logo { font-size: 20px; font-weight: bold; }
-        .nav a { color: white; text-decoration: none; margin-left: 20px; padding: 5px 10px; }
-        .nav a:hover { background: #34495e; }
-        .container { max-width: 1000px; margin: 30px auto; padding: 0 20px; }
+        body { font-family: Arial, sans-serif; background: #f4f4f4; padding: 20px; }
+        .container { max-width: 1000px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; }
         h1 { color: #333; margin-bottom: 20px; }
+        .navbar { background: #333; padding: 15px; margin-bottom: 20px; border-radius: 5px; display: flex; justify-content: space-between; align-items: center; }
+        .navbar a { color: white; text-decoration: none; margin-left: 15px; padding: 5px 10px; }
+        .navbar a:hover { background: #555; border-radius: 3px; }
+        .welcome-text { color: white; }
         .order-card { border: 1px solid #ddd; margin: 15px 0; padding: 15px; border-radius: 5px; background: white; }
         .order-header { background: #f5f5f5; padding: 10px; cursor: pointer; font-weight: bold; border-radius: 3px; }
         .order-header:hover { background: #e9ecef; }
@@ -48,6 +50,8 @@ $database->closeConnection($connection);
         .badge-danger { background: #dc3545; color: white; }
         .product-item { border-bottom: 1px solid #eee; padding: 10px 0; }
         .product-item:last-child { border-bottom: none; }
+        .total { font-weight: bold; margin-top: 10px; text-align: right; }
+        .no-orders { text-align: center; padding: 40px; color: #666; }
         .review-section { margin-top: 15px; padding: 15px; background: #fff3cd; border-radius: 5px; border: 1px solid #ffc107; }
         .rating { margin: 10px 0; }
         .rating input { margin-right: 5px; }
@@ -57,8 +61,8 @@ $database->closeConnection($connection);
         .submit-review:hover { background: #218838; }
         .success-msg { background: #d4edda; color: #155724; padding: 10px; border-radius: 3px; margin-bottom: 10px; }
         .error-msg { background: #f8d7da; color: #721c24; padding: 10px; border-radius: 3px; margin-bottom: 10px; }
-        .total { font-weight: bold; margin-top: 10px; text-align: right; }
-        .no-orders { text-align: center; padding: 40px; color: #666; }
+        .btn { display: inline-block; background: #007bff; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; margin-top: 15px; }
+        .btn:hover { background: #0056b3; }
     </style>
     <script>
         function toggleOrder(orderId){
@@ -98,7 +102,6 @@ $database->closeConnection($connection);
                             Subtotal: $${(item.quantity * parseFloat(item.unit_price)).toFixed(2)}
                     `;
                     
-                    // Add review form if order is delivered
                     if(order.status === 'Delivered'){
                         itemsHtml += `
                             <div class="review-section">
@@ -147,29 +150,39 @@ $database->closeConnection($connection);
                 return;
             }
             
-            resultDiv.innerHTML = '<div style="color:blue;">Submitting...</div>';
+            resultDiv.innerHTML = '<div class="loading-msg">⏳ Submitting review...</div>';
             
             var formData = new FormData();
             formData.append("product_id", productId);
             formData.append("rating", rating.value);
             formData.append("review_text", reviewText);
-            formData.append("order_id", orderId);
             
             var xhttp = new XMLHttpRequest();
             xhttp.onreadystatechange = function(){
                 if(this.readyState == 4){
                     if(this.status == 200){
-                        var response = JSON.parse(this.responseText);
-                        if(response.success){
-                            resultDiv.innerHTML = '<div class="success-msg">✅ Review submitted successfully! Thank you!</div>';
-                            document.getElementById(`review_text_${productId}`).value = '';
-                            var radios = document.querySelectorAll(`input[name="rating_${productId}"]`);
-                            radios.forEach(radio => radio.checked = false);
-                        } else if(response.error){
-                            resultDiv.innerHTML = '<div class="error-msg">❌ ' + response.error + '</div>';
+                        try {
+                            var response = JSON.parse(this.responseText);
+                            if(response.ok){
+                                resultDiv.innerHTML = '<div class="success-msg">✅ Review submitted successfully! Thank you!</div>';
+                                document.getElementById(`review_text_${productId}`).value = '';
+                                var radios = document.querySelectorAll(`input[name="rating_${productId}"]`);
+                                radios.forEach(radio => radio.checked = false);
+                                setTimeout(function(){
+                                    location.reload();
+                                }, 2000);
+                            } else {
+                                resultDiv.innerHTML = '<div class="error-msg">❌ ' + response.error + '</div>';
+                            }
+                        } catch(e) {
+                            resultDiv.innerHTML = '<div class="error-msg">❌ Error parsing response</div>';
                         }
+                    } else if(this.status == 403){
+                        resultDiv.innerHTML = '<div class="error-msg">❌ You can only review products from delivered orders</div>';
+                    } else if(this.status == 409){
+                        resultDiv.innerHTML = '<div class="error-msg">❌ You have already reviewed this product</div>';
                     } else {
-                        resultDiv.innerHTML = '<div class="error-msg">❌ Error submitting review. Please try again.</div>';
+                        resultDiv.innerHTML = '<div class="error-msg">❌ Error submitting review. Status: ' + this.status + '</div>';
                     }
                 }
             };
@@ -179,32 +192,36 @@ $database->closeConnection($connection);
     </script>
 </head>
 <body>
-    <div class="header">
-        <div class="logo">E-Commerce Store</div>
-        <div class="nav">
-            <a href="../dashboard.php">Home</a>
-            <a href="my-orders.php">My Orders</a>
-            <a href="../profile.php">Profile</a>
-            <a href="../../controllers/AuthController.php?action=logout">Logout</a>
-        </div>
-    </div>
-    
     <div class="container">
-        <h1>My Orders</h1>
+        <h1> My Orders</h1>
+        
+        <div class="navbar">
+            <div class="welcome-text">
+                <?php if(isset($_SESSION["name"])): ?>
+                    Welcome, <?php echo htmlspecialchars($_SESSION["name"]); ?>
+                <?php endif; ?>
+            </div>
+            <div>
+                <a href="../dashboard.php"> Dashboard</a>
+                <a href="catalogue.php"> Products</a>
+                <a href="cart.php"> Cart</a>
+                <a href="../../controllers/AuthController.php?action=logout"> Logout</a>
+            </div>
+        </div>
         
         <?php if(empty($orders)): ?>
             <div class="no-orders">
                 <p>You haven't placed any orders yet.</p>
-                <a href="../catalogue.php">Start Shopping</a>
+                <a href="catalogue.php" class="btn"> Start Shopping</a>
             </div>
         <?php else: ?>
             <?php foreach($orders as $order): ?>
                 <div class="order-card">
                     <div class="order-header" onclick="toggleOrder(<?php echo $order['id']; ?>)">
-                        Order #<?php echo $order['id']; ?> - 
-                        Date: <?php echo date('M d, Y', strtotime($order['created_at'])); ?> - 
-                        Total: $<?php echo number_format($order['total_amount'], 2); ?> - 
-                        Status: <span class="badge 
+                         Order #<?php echo $order['id']; ?> - 
+                         Date: <?php echo $order['created_at']; ?> - 
+                         Total: $<?php echo number_format($order['total_amount'], 2); ?> - 
+                         Status: <span class="badge 
                             <?php 
                                 if($order['status'] == 'Pending') echo 'badge-warning';
                                 elseif($order['status'] == 'Processing') echo 'badge-info';
@@ -216,7 +233,7 @@ $database->closeConnection($connection);
                         </span>
                     </div>
                     <div id="details-<?php echo $order['id']; ?>" class="order-details" style="display:none">
-                        Loading order details...
+                         Loading order details...
                     </div>
                 </div>
             <?php endforeach; ?>
