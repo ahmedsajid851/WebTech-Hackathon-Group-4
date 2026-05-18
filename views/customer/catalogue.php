@@ -10,7 +10,6 @@ if(!isset($_SESSION['user_id'])){
     exit();
 }
 
-// ========== FIXED: Correct path for db.php ==========
 require_once __DIR__ . '/../../config/db.php';
 require_once __DIR__ . '/../../models/ProductModel.php';
 
@@ -40,7 +39,7 @@ $database->closeConnection($connection);
     <style>
         body {
             font-family: Arial, sans-serif;
-            margin: 20px;
+            margin: 0;
             padding: 0;
             background-color: #f4f4f4;
         }
@@ -51,16 +50,23 @@ $database->closeConnection($connection);
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 20px;
         }
         .navbar a {
             color: #fff;
             text-decoration: none;
             margin-left: 15px;
         }
+        .container {
+            max-width: 1200px;
+            margin: 20px auto;
+            padding: 0 20px;
+        }
+        h1 {
+            margin-bottom: 20px;
+        }
         .product-grid {
             display: grid;
-            grid-template-columns: repeat(3, 1fr);
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
             gap: 20px;
         }
         .product-card {
@@ -70,8 +76,9 @@ $database->closeConnection($connection);
             padding: 15px;
             text-align: center;
         }
+        /* REMOVED: .product-card:hover { transform: translateY(-5px); ... } */
         .product-card img {
-            max-width: 100%;
+            width: 100%;
             height: 180px;
             object-fit: cover;
             border-radius: 4px;
@@ -80,11 +87,13 @@ $database->closeConnection($connection);
         .product-card h3 {
             font-size: 16px;
             margin: 8px 0;
+            min-height: 40px;
         }
         .product-card .price {
             font-size: 18px;
             font-weight: bold;
             margin-bottom: 10px;
+            color: #28a745;
         }
         .btn-cart {
             background-color: #007bff;
@@ -103,7 +112,7 @@ $database->closeConnection($connection);
             text-align: center;
             font-size: 16px;
             color: #888;
-            grid-column: 1/-1;
+            padding: 50px;
         }
     </style>
 </head>
@@ -114,27 +123,37 @@ $database->closeConnection($connection);
             <?php if(isset($_SESSION["name"])): ?>
                 <span>Welcome, <?php echo htmlspecialchars($_SESSION["name"]); ?></span>
             <?php endif; ?>
-            <a href="cart.php">🛒 Cart <span id="cart-count"><?php echo $cartCount; ?></span></a>
+            <a href="cart.php">🛒 Cart (<span id="cart-count"><?php echo $cartCount; ?></span>)</a>
             <a href="../dashboard.php">Dashboard</a>
             <a href="../../controllers/AuthController.php?action=logout">Logout</a>
         </div>
     </div>
 
-    <h1>Product Catalogue</h1>
+    <div class="container">
+        <h1>Product Catalogue</h1>
 
-    <div class="product-grid">
-        <?php if ($products && $products->num_rows > 0): ?>
-            <?php while ($product = $products->fetch_assoc()): ?>
-                <div class="product-card">
-                    <img src="<?php echo htmlspecialchars($product['primary_image_path']); ?>" alt="<?php echo htmlspecialchars($product['name']); ?>">
-                    <h3><?php echo htmlspecialchars($product['name']); ?></h3>
-                    <div class="price">$<?php echo number_format($product['price'], 2); ?></div>
-                    <button class="btn-cart" onclick="addToCart(<?php echo $product['id']; ?>)">Add to Cart</button>
-                </div>
-            <?php endwhile; ?>
-        <?php else: ?>
-            <div class="no-products">No products available.</div>
-        <?php endif; ?>
+        <div class="product-grid">
+            <?php if ($products && $products->num_rows > 0): ?>
+                <?php while ($product = $products->fetch_assoc()): ?>
+                    <?php 
+                    // Set image path with fallback
+                    $imagePath = !empty($product['primary_image_path']) && file_exists(__DIR__ . '/../../' . $product['primary_image_path']) 
+                        ? '/WebTech-Hackathon-Group-4/' . $product['primary_image_path'] 
+                        : 'https://via.placeholder.com/300x180?text=No+Image';
+                    ?>
+                    <div class="product-card">
+                        <img src="<?php echo $imagePath; ?>" 
+                             alt="<?php echo htmlspecialchars($product['name']); ?>"
+                             loading="lazy">
+                        <h3><?php echo htmlspecialchars($product['name']); ?></h3>
+                        <div class="price">$<?php echo number_format($product['price'], 2); ?></div>
+                        <button class="btn-cart" onclick="addToCart(<?php echo $product['id']; ?>)">Add to Cart</button>
+                    </div>
+                <?php endwhile; ?>
+            <?php else: ?>
+                <div class="no-products">No products available.</div>
+            <?php endif; ?>
+        </div>
     </div>
 
     <script>
@@ -143,11 +162,21 @@ $database->closeConnection($connection);
             xhr.open("POST", "../../controllers/CartController.php?action=add", true);
             xhr.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
             xhr.onreadystatechange = function() {
-                if (xhr.readyState === 4 && xhr.status === 200) {
-                    var response = JSON.parse(xhr.responseText);
-                    if (response.success) {
-                        document.getElementById("cart-count").innerText = response.cartCount;
-                        alert("Product added to cart!");
+                if (xhr.readyState === 4) {
+                    if (xhr.status === 200) {
+                        try {
+                            var response = JSON.parse(xhr.responseText);
+                            if (response.success) {
+                                document.getElementById("cart-count").innerText = response.cartCount;
+                                alert("Product added to cart!");
+                            } else {
+                                alert(response.message || "Error adding to cart");
+                            }
+                        } catch(e) {
+                            console.log("Error:", e);
+                        }
+                    } else {
+                        alert("Error adding to cart");
                     }
                 }
             };
