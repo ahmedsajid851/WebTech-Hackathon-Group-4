@@ -20,7 +20,7 @@ $user_id = $_SESSION['user_id'];
 
 $action = $_GET['action'] ?? '';
 
-// Update profile
+// ========== 1. UPDATE PROFILE ==========
 if($action == 'update'){
     $name = trim($_POST['name'] ?? '');
     $email = trim($_POST['email'] ?? '');
@@ -49,7 +49,7 @@ if($action == 'update'){
     exit();
 }
 
-// Add address
+// ========== 2. ADD ADDRESS ==========
 if($action == 'addAddress'){
     $newAddress = trim($_POST['address'] ?? '');
     
@@ -82,12 +82,12 @@ if($action == 'addAddress'){
     exit();
 }
 
-// Remove address
+// ========== 3. REMOVE ADDRESS (UPDATED - by address value) ==========
 if($action == 'removeAddress'){
-    $index = intval($_POST['index'] ?? -1);
+    $addressToRemove = trim($_POST['address'] ?? '');
     
-    if($index < 0){
-        echo json_encode(['success' => false, 'error' => 'Invalid address index']);
+    if(empty($addressToRemove)){
+        echo json_encode(['success' => false, 'error' => 'Address is required']);
         exit();
     }
     
@@ -95,11 +95,11 @@ if($action == 'removeAddress'){
     $addresses = json_decode($userData['shipping_addresses'] ?? '[]', true);
     if(!is_array($addresses)) $addresses = [];
     
-    if(isset($addresses[$index])){
-        array_splice($addresses, $index, 1);
-    }
+    $newAddresses = array_values(array_filter($addresses, function($addr) use ($addressToRemove) {
+        return trim($addr) !== trim($addressToRemove);
+    }));
     
-    $encoded = json_encode($addresses);
+    $encoded = json_encode($newAddresses);
     $sql = "UPDATE users SET shipping_addresses = ? WHERE id = ?";
     $stmt = $connection->prepare($sql);
     $stmt->bind_param("si", $encoded, $user_id);
@@ -112,7 +112,7 @@ if($action == 'removeAddress'){
     exit();
 }
 
-// Change password
+// ========== 4. CHANGE PASSWORD ==========
 if($action == 'changePassword'){
     $current = $_POST['current_password'] ?? '';
     $newPass = $_POST['new_password'] ?? '';
@@ -127,8 +127,13 @@ if($action == 'changePassword'){
         exit();
     }
     
-    // Verify current password
     $userData = $userModel->getUserById($user_id);
+    
+    if(!$userData){
+        echo json_encode(['success' => false, 'error' => 'User not found']);
+        exit();
+    }
+    
     if(!password_verify($current, $userData['password_hash'])){
         echo json_encode(['success' => false, 'error' => 'Current password is incorrect']);
         exit();
