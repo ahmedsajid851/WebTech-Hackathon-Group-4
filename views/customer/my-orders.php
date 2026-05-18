@@ -193,7 +193,7 @@ $database->closeConnection($connection);
 </head>
 <body>
     <div class="container">
-        <h1>📦 My Orders</h1>
+        <h1> My Orders</h1>
         
         <div class="navbar">
             <div class="welcome-text">
@@ -202,26 +202,26 @@ $database->closeConnection($connection);
                 <?php endif; ?>
             </div>
             <div>
-                <a href="../dashboard.php">🏠 Dashboard</a>
-                <a href="catalogue.php">🛒 Products</a>
-                <a href="cart.php">🛍️ Cart</a>
-                <a href="../../controllers/AuthController.php?action=logout">🚪 Logout</a>
+                <a href="../dashboard.php"> Dashboard</a>
+                <a href="catalogue.php"> Products</a>
+                <a href="cart.php"> Cart</a>
+                <a href="../../controllers/AuthController.php?action=logout"> Logout</a>
             </div>
         </div>
         
         <?php if(empty($orders)): ?>
             <div class="no-orders">
                 <p>You haven't placed any orders yet.</p>
-                <a href="catalogue.php" class="btn">🛒 Start Shopping</a>
+                <a href="catalogue.php" class="btn"> Start Shopping</a>
             </div>
         <?php else: ?>
             <?php foreach($orders as $order): ?>
                 <div class="order-card">
                     <div class="order-header" onclick="toggleOrder(<?php echo $order['id']; ?>)">
-                        🧾 Order #<?php echo $order['id']; ?> - 
-                        📅 Date: <?php echo $order['created_at']; ?> - 
-                        💰 Total: $<?php echo number_format($order['total_amount'], 2); ?> - 
-                        📊 Status: <span class="badge 
+                         Order #<?php echo $order['id']; ?> - 
+                         Date: <?php echo $order['created_at']; ?> - 
+                         Total: $<?php echo number_format($order['total_amount'], 2); ?> - 
+                         Status: <span class="badge 
                             <?php 
                                 if($order['status'] == 'Pending') echo 'badge-warning';
                                 elseif($order['status'] == 'Processing') echo 'badge-info';
@@ -233,7 +233,7 @@ $database->closeConnection($connection);
                         </span>
                     </div>
                     <div id="details-<?php echo $order['id']; ?>" class="order-details" style="display:none">
-                        ⏳ Loading order details...
+                         Loading order details...
                     </div>
                 </div>
             <?php endforeach; ?>

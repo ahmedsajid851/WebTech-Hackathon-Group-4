@@ -10,7 +10,6 @@ if(!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin'){
     exit();
 }
 
-// ========== FIXED: Use Database class instead of DatabaseConnection ==========
 require_once __DIR__ . '/../../config/db.php';
 
 function getCurrentUserName() {
@@ -68,34 +67,27 @@ $database->closeConnection($conn);
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin Dashboard</title>
     <style>
-        * {
+        /* Beginner CSS - Simple and Clean */
+        body {
+            font-family: Arial, Helvetica, sans-serif;
+            background-color: #f0f0f0;
             margin: 0;
             padding: 0;
-            box-sizing: border-box;
         }
         
-        body {
-            font-family: Arial, sans-serif;
-            background: #f0f0f0;
-        }
-        
+        /* Top Navigation Bar */
         .top-nav {
-            background: #1a1a1a;
+            background-color: #333;
             color: white;
-            padding: 15px 25px;
-            position: sticky;
-            top: 0;
-            z-index: 100;
+            padding: 15px 20px;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            border-bottom: 1px solid #333;
         }
         
         .top-nav h2 {
             font-size: 18px;
             font-weight: normal;
-            color: white;
         }
         
         .user-info {
@@ -106,19 +98,17 @@ $database->closeConnection($conn);
         
         .user-name {
             font-size: 14px;
-            color: white;
         }
         
         .user-role {
-            background: #333;
+            background-color: #555;
             padding: 3px 8px;
             border-radius: 3px;
             font-size: 12px;
-            color: white;
         }
         
         .logout-btn {
-            background: #d9534f;
+            background-color: #d9534f;
             color: white;
             padding: 5px 12px;
             text-decoration: none;
@@ -127,20 +117,18 @@ $database->closeConnection($conn);
         }
         
         .logout-btn:hover {
-            background: #c9302c;
+            background-color: #c9302c;
         }
         
+        /* Sidebar */
         .main-container {
             display: flex;
         }
         
         .sidebar {
             width: 200px;
-            background: #2c2c2c;
-            position: sticky;
-            top: 52px;
-            height: calc(100vh - 52px);
-            overflow-y: auto;
+            background-color: #2c2c2c;
+            min-height: 100vh;
         }
         
         .sidebar a {
@@ -148,20 +136,21 @@ $database->closeConnection($conn);
             text-decoration: none;
             display: block;
             padding: 12px 20px;
-            border-bottom: 1px solid #3a3a3a;
+            border-bottom: 1px solid #444;
             font-size: 14px;
         }
         
         .sidebar a:hover {
-            background: #3a3a3a;
+            background-color: #444;
             color: white;
         }
         
         .sidebar a.active {
-            background: #007bff;
+            background-color: #007bff;
             color: white;
         }
         
+        /* Main Content */
         .content {
             flex: 1;
             padding: 20px;
@@ -181,20 +170,19 @@ $database->closeConnection($conn);
             font-size: 14px;
         }
         
+        /* Statistics Boxes */
         .stats {
             display: flex;
             gap: 15px;
-            margin-bottom: 20px;
             flex-wrap: wrap;
         }
         
         .stat-box {
-            background: white;
-            padding: 15px;
+            background-color: white;
             border: 1px solid #ddd;
+            padding: 15px;
             min-width: 140px;
             text-align: center;
-            border-radius: 3px;
         }
         
         .stat-box h3 {
@@ -210,50 +198,56 @@ $database->closeConnection($conn);
     </style>
 </head>
 <body>
-    <div class="top-nav">
-        <h2>Admin Panel</h2>
-        <div class="user-info">
-            <span class="user-name"><?php echo htmlspecialchars(getCurrentUserName()); ?></span>
-            <span class="user-role"><?php echo getCurrentUserRole(); ?></span>
-            <a href="../../views/auth/logout.php" class="logout-btn">Logout</a>
-        </div>
+
+<!-- Top Navigation Bar -->
+<div class="top-nav">
+    <h2>Admin Panel</h2>
+    <div class="user-info">
+        <span class="user-name"><?php echo htmlspecialchars(getCurrentUserName()); ?></span>
+        <span class="user-role"><?php echo getCurrentUserRole(); ?></span>
+        <a href="../../views/auth/logout.php" class="logout-btn">Logout</a>
+    </div>
+</div>
+
+<!-- Main Container -->
+<div class="main-container">
+    <!-- Sidebar -->
+    <div class="sidebar">
+        <a href="dashboard.php" class="active">Dashboard</a>
+        <a href="categories.php">Categories</a>
+        <a href="products.php">Products</a>
+        <a href="orders.php">Orders</a>
     </div>
     
-    <div class="main-container">
-        <div class="sidebar">
-            <a href="dashboard.php" class="active">Dashboard</a>
-            <a href="categories.php">Categories</a>
-            <a href="products.php">Products</a>
-            <a href="orders.php">Orders</a>
+    <!-- Main Content -->
+    <div class="content">
+        <div class="page-title">
+            <h2>Dashboard</h2>
+            <p>Welcome, <?php echo htmlspecialchars(getCurrentUserName()); ?></p>
         </div>
         
-        <div class="content">
-            <div class="page-title">
-                <h2>Dashboard</h2>
-                <p>Welcome, <?php echo htmlspecialchars(getCurrentUserName()); ?></p>
+        <div class="stats">
+            <div class="stat-box">
+                <h3>Total Products</h3>
+                <div class="number"><?php echo $totalProducts; ?></div>
             </div>
-            
-            <div class="stats">
-                <div class="stat-box">
-                    <h3>Total Products</h3>
-                    <div class="number"><?php echo $totalProducts; ?></div>
+            <div class="stat-box">
+                <h3>Total Categories</h3>
+                <div class="number"><?php echo $totalCategories; ?></div>
+            </div>
+            <div class="stat-box">
+                <h3>Low Stock Items</h3>
+                <div class="number" style="color: <?php echo $lowStockItems > 0 ? '#d9534f' : '#5cb85c'; ?>">
+                    <?php echo $lowStockItems; ?>
                 </div>
-                <div class="stat-box">
-                    <h3>Total Categories</h3>
-                    <div class="number"><?php echo $totalCategories; ?></div>
-                </div>
-                <div class="stat-box">
-                    <h3>Low Stock Items</h3>
-                    <div class="number" style="color: <?php echo $lowStockItems > 0 ? '#d9534f' : '#5cb85c'; ?>">
-                        <?php echo $lowStockItems; ?>
-                    </div>
-                </div>
-                <div class="stat-box">
-                    <h3>Pending Orders</h3>
-                    <div class="number"><?php echo $pendingOrders; ?></div>
-                </div>
+            </div>
+            <div class="stat-box">
+                <h3>Pending Orders</h3>
+                <div class="number"><?php echo $pendingOrders; ?></div>
             </div>
         </div>
     </div>
+</div>
+
 </body>
 </html>
